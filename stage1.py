@@ -879,6 +879,68 @@ argum=[
     T=0.5,
     num_epochs=number_epochs,
     num_clean=5,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    ann_step = 0.5,
+    uncertainty = True, 
+    evidence_factor = 1/10,
+    gce_loss = False,
+    sim_clr = False,
+    mix_clr = False,
+    use_pretrained = False,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    use_loss = False,
+    name_exp = "0.2_ctnt"),
+
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    lambda_c = 0.025,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    num_clean=5,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    ann_step = 0,
+    uncertainty = True, 
+    evidence_factor = 1/10,
+    gce_loss = False,
+    sim_clr = False,
+    mix_clr = False,
+    use_pretrained = False,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    use_loss = True,
+    name_exp = "0.2_0"),
+
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    lambda_c = 0.025,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    num_clean=5,
     r=0.8,
     id='',
     seed=123,
@@ -1021,8 +1083,9 @@ argum=[
     edl_loss = edl_log_loss,
     edl_activation = softplus_evidence,
     use_loss = True,
-    name_exp = "0.2_0.1"),
+    name_exp = "0.2_0.1")]
 
+a = [
     argparse.Namespace(
     batch_size=64,
     lr=0.02,
@@ -1053,11 +1116,71 @@ argum=[
     edl_activation = softplus_evidence,
     use_loss = True,
     name_exp = "0.8_0.1"),
+
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    lambda_c = 0.025,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    num_clean=5,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    ann_step = 0.05,
+    uncertainty = True, 
+    evidence_factor = 1/10,
+    gce_loss = False,
+    sim_clr = False,
+    mix_clr = False,
+    use_pretrained = False,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    use_loss = True,
+    name_exp = "0.2_0.05"),
+
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    lambda_c = 0.025,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    num_clean=5,
+    r=0.8,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    ann_step = 0.05,
+    uncertainty = True, 
+    evidence_factor = 1/10,
+    gce_loss = False,
+    sim_clr = False,
+    mix_clr = False,
+    use_pretrained = False,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    use_loss = True,
+    name_exp = "0.8_0.05"),
 ]
 
-
-arguments_2 = argum
-for args in arguments_2:
+for args in a:
     if args.dataset == 'cifar100':
         args.num_class=100
         args.data_path= './cifar-100'
@@ -1244,9 +1367,9 @@ for args in arguments_2:
     total_time =  0
     warmup_time = 0
 
-    """if resume_epoch == 201:
+    if resume_epoch == 201:
         all_superclean_relabeled
-        all_idx_view_labeled_relabeled"""
+        all_idx_view_labeled_relabeled
 
 
     for epoch in range(resume_epoch, args.num_epochs+1):   
@@ -1334,7 +1457,7 @@ for args in arguments_2:
                 loss_train[1], loss_train_x[1], loss_train_u[1] = train(epoch,net2,net1,optimizer2,labeled_trainloader, unlabeled_trainloader, loss_train[1], loss_train_x[1], loss_train_u[1], savelog=False) # train net2         
             else:
                 print('Train Net1')
-                labeled_trainloader, unlabeled_trainloader, _ = loader.run('train',pred_margin2,prob_margin2) # co-divide
+                labeled_trainloader, unlabeled_trainloader, _ = loader.run('train',pred2, prob1) # co-divide
                 loss_train[0], loss_train_x[0], loss_train_u[0] = train(epoch,net1,net2,optimizer1,labeled_trainloader, unlabeled_trainloader, loss_train[0], loss_train_x[0], loss_train_u[0], savelog=True) # train net1  
                 
                 print('\nTrain Net2')
@@ -1375,7 +1498,7 @@ for args in arguments_2:
         save_models(path_exp)
         
 
-    test_log.write('\nBest:%.2f  avgLast10: %.2f\n'%(max(test_acc_hist),sum(test_acc_hist[-10:])/10.0))
+    #test_log.write('\nBest:%.2f  avgLast10: %.2f\n'%(max(test_acc_hist),sum(test_acc_hist[-10:])/10.0))
     test_log.close() 
 
     time_log.write('SSL Time: %f \n'%(total_time-warmup_time))
@@ -1448,8 +1571,32 @@ for args in arguments_2:
             list(set(indices[0][-1]) - (set(all_idx_view_labeled[1][-epoch_count]) - set(diff_indices)))
         ]
         write_log_superclean(filtered_elements, predicted_labels, log_file = relabeled_log2)
-
     relabeled_log2.close()
+
+
+
+
+    log_intersection= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean_intersection.txt','w')
+
+    for epoch_count in range(1, 171):
+        epoch = 200 - epoch_count
+        loss_superclean1 = all_superclean[0][-epoch_count] 
+        loss_superclean2 = all_superclean[1][-epoch_count]
+        margin_superclean1 = all_superclean_margin[0][-epoch_count] 
+        margin_superclean2 = all_superclean_margin[1][-epoch_count] 
+
+        loss_intersection = list(set(loss_superclean1) & set(loss_superclean2))
+        margin_intersection = list(set(margin_superclean1) & set(margin_superclean2))
+
+        predicted_labels1 = hist_preds[0][-epoch_count]
+        predicted_labels2 = hist_preds[1][-epoch_count]
+        predicted_labels = (predicted_labels1+predicted_labels2).argmax(dim=1)
+
+        filtered_elements = [loss_intersection, margin_intersection]
+
+        write_log_superclean(filtered_elements, predicted_labels, log_file=log_intersection)
+
+    log_intersection.close()
 
 
 

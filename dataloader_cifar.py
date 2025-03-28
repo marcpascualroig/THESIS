@@ -17,7 +17,7 @@ def unpickle(file):
     return dict
 
 class cifar_dataset(Dataset): 
-    def __init__(self, dataset, r, noise_mode, root_dir, transform, mode, noise_file='', pred=[], probability=[], log=''):
+    def __init__(self, dataset, r, noise_mode, root_dir, transform, mode, noise_file='', pred=[], probability=[], relabel_inds = [], new_labels = None, log=''):
         
         self.r = r # noise ratio
         self.transform = transform
@@ -81,32 +81,46 @@ class cifar_dataset(Dataset):
                 json.dump(noise_label,open(noise_file,"w"))
 
             noise_label = np.array(noise_label).astype(np.int64)
+            #update labels
+            if new_labels is not None:
+                noise_label_tensor = torch.tensor(noise_label) if not isinstance(noise_label, torch.Tensor) else noise_label
+                new_labels_tensor = torch.tensor(new_labels) if not isinstance(new_labels, torch.Tensor) else new_labels
+
+                # Perform the comparison
+                diff_count = (noise_label_tensor[relabel_inds] != new_labels_tensor).sum().item()
+
+                print("Number of different elements:", diff_count)
+                noise_label[relabel_inds]=new_labels
+
             train_label = np.array(train_label).astype(np.int64)
+
             if self.mode == 'all' or self.mode == 'pretrain':
                 self.train_data = train_data
                 self.noise_label = np.array(noise_label).astype(np.int64)
                 self.train_label = np.array(train_label).astype(np.int64)
-            else:                   
+            else:            
                 if self.mode == "labeled":
-                    pred_idx = pred.nonzero()[0]
-                    self.probability = [probability[i] for i in pred_idx]   
+                    pred_idx = pred.nonzero()[0] 
+                    self.probability = np.array([probability[i] for i in pred_idx]) 
                     
+                    #pred_idx = np.concatenate((pred_idx, relabel_inds))  
+                    #self.probability = np.concatenate((self.probability, np.full(len(relabel_inds), 0.5)))
+
                     clean = (np.array(noise_label)==np.array(train_label))                                                       
                     auc_meter = AUCMeter()
                     auc_meter.reset()
                     auc_meter.add(probability,clean)        
                     auc,_,_ = auc_meter.value()               
                     log.write('Numer of labeled samples:%d   AUC:%.3f\n'%(pred.sum(),auc))
-                    log.flush()      
+                    log.flush()
                     
                 elif self.mode == "unlabeled":
-                    pred_idx = (1-pred).nonzero()[0]                                               
-                
-                self.train_data = train_data[pred_idx]
-                # self.noise_label = [noise_label[i] for i in pred_idx]
-                # pred_idx = np.array(pred_idx)
-                self.noise_label = np.array(noise_label)[pred_idx]
-                print("%s data has a size of %d"%(self.mode,len(self.noise_label)))            
+                    pred_idx = (1-pred).nonzero()[0]    
+                    #pred_idx = np.setdiff1d(pred_idx, relabel_inds)
+
+                self.train_data = train_data[np.array(pred_idx).astype(int)]
+                self.noise_label = np.array(noise_label)[np.array(pred_idx).astype(int)]
+                print("%s data has a size of %d"%(self.mode,len(self.noise_label)))
                 
     def __getitem__(self, index):
         if self.mode=='labeled':
@@ -117,6 +131,17 @@ class cifar_dataset(Dataset):
                 img3 = self.transform[2](img)
                 img4 = self.transform[3](img)
                 return img1, img2, img3, img4, target, prob, index
+        
+        if self.mode == 'relabel':
+                img, target = self.train_data[index], self.noise_label[index]
+                img = Image.fromarray(img)
+                img1 = self.transform[0](img)
+                img2 = self.transform[1](img)
+                img3 = self.transform[2](img)
+                img4 = self.transform[3](img)
+                prob = 1
+                return img1, img2, img3, img4, target, prob, index
+
         elif self.mode=='unlabeled':
                 img = self.train_data[index]
                 img = Image.fromarray(img)
@@ -125,6 +150,7 @@ class cifar_dataset(Dataset):
                 img3 = self.transform[2](img)
                 img4 = self.transform[3](img)
                 return img1, img2, img3, img4, index
+        
         elif self.mode=='pretrain':
                 img = self.train_data[index]
                 img = Image.fromarray(img)
@@ -244,7 +270,7 @@ class cifar_dataloader():
         self.transform_train = self.transforms
 
 
-    def run(self,mode,pred=[],prob=[]):
+    def run(self,mode,pred=[],prob=[], relabel_inds = [], new_labels=None):
         if mode=='warmup':
             all_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
                                         root_dir=self.root_dir, transform=self.transform_train["warmup"], mode="all",
@@ -255,7 +281,7 @@ class cifar_dataloader():
                 shuffle=True,
                 num_workers=self.num_workers)
             return trainloader
-        
+
         elif mode == 'pretrain':
             pretrain_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
                                         root_dir=self.root_dir, transform=self.transform_train["unlabeled"], mode="pretrain",
@@ -271,7 +297,7 @@ class cifar_dataloader():
         elif mode=='train':
             labeled_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
                                             root_dir=self.root_dir, transform=self.transform_train["labeled"], mode="labeled",
-                                            noise_file=self.noise_file, pred=pred, probability=prob,log=self.log)
+                                            noise_file=self.noise_file, pred=pred, probability=prob, relabel_inds = relabel_inds, new_labels=new_labels, log=self.log)
             labeled_trainloader = DataLoader(
                 dataset=labeled_dataset,
                 batch_size=self.batch_size,
@@ -280,7 +306,7 @@ class cifar_dataloader():
 
             unlabeled_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
                                               root_dir=self.root_dir, transform=self.transform_train["unlabeled"], mode="unlabeled",
-                                              noise_file=self.noise_file, pred=pred)
+                                              noise_file=self.noise_file, pred=pred, relabel_inds = relabel_inds, new_labels=new_labels)
             unlabeled_trainloader = DataLoader(
                 dataset=unlabeled_dataset,
                 batch_size=self.batch_size,
@@ -292,6 +318,7 @@ class cifar_dataloader():
                 batch_size=self.batch_size,
                 shuffle=False,
                 num_workers=self.num_workers)
+            
             return labeled_trainloader, unlabeled_trainloader, unlabeled_trainloader_map
 
         elif mode=='test':
@@ -306,7 +333,7 @@ class cifar_dataloader():
 
         elif mode=='eval_train':
             eval_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r, root_dir=self.root_dir,
-                                         transform=self.transform_test, mode='all', noise_file=self.noise_file)
+                                         transform=self.transform_test, mode='all', relabel_inds = relabel_inds, new_labels=new_labels, noise_file=self.noise_file)
             eval_loader = DataLoader(
                 dataset=eval_dataset,
                 batch_size=self.batch_size*2,
