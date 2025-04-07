@@ -15,6 +15,7 @@ import random
 import argparse
 import numpy as np
 from PreResNet import *
+from resnet import SupCEResNet
 from sklearn.mixture import GaussianMixture
 import dataloader_cifar as dataloader
 import pdb
@@ -22,7 +23,7 @@ import io
 import PIL
 from torchvision import transforms
 import seaborn as sns
-import sklearn.metrics as metrics
+from sklearn.metrics import precision_score, recall_score
 import pickle
 import json
 import pandas as pd
@@ -30,182 +31,260 @@ import time
 from pathlib import Path
 from utils_plot import plot_histogram_pred, plot_histogram_metric, plot_histogram_metric2
 from utils_plot import plot_curve_accuracy_test, plot_curve_accuracy, plot_curve_loss, plot_hist_curve_loss_test, plot_curve_loss_train
-from edl import get_device, one_hot_embedding, softplus_evidence, exp_evidence, relu_evidence, edl_log_loss, edl_mse_loss, edl_digamma_loss, compute_dirichlet_metrics
+from edl import get_device, one_hot_embedding, softplus_evidence, exp_evidence, relu_evidence, edl_log_loss, m_edl_log_loss, edl_mse_loss, edl_digamma_loss, compute_dirichlet_metrics
 #psscl
-import robust_loss, Contrastive_loss
+import robust_loss, Contrastive_loss, Contrastive_loss2
 
 sns.set()
 
-def train(epoch,net,net2,optimizer,labeled_trainloader,unlabeled_trainloader, all_train_loss, all_train_loss_x, all_train_loss_u, savelog=False):
+
+contrastive_criterion2 = Contrastive_loss2.SupConLoss()
+                      
+def train(epoch,net,net2,optimizer,labeled_trainloader, unlabeled_trainloader, all_train_loss, all_train_loss_x, all_train_loss_u, all_train_loss_contrastive, op, savelog=False):
     net.train()
     net2.eval() #fix one network and train the other
 
-    train_loss = train_loss_lx = train_loss_u = train_loss_penalty = train_loss_simclr = train_loss_mixclr = 0
+    train_loss = train_loss_lx = train_loss_u = train_loss_penalty = contrastive_loss = 0
 
     unlabeled_train_iter = iter(unlabeled_trainloader)
     num_iter = (len(labeled_trainloader.dataset)//args.batch_size)+1
-    for batch_idx, (inputs_x, inputs_x2, inputs_x3, inputs_x4, labels_x, w_x, _) in enumerate(labeled_trainloader):
-        try:
-            inputs_u, inputs_u2, inputs_u3, inputs_u4, _ = unlabeled_train_iter.__next__()
-        except:
-            unlabeled_train_iter = iter(unlabeled_trainloader)
-            inputs_u, inputs_u2, inputs_u3, inputs_u4, _ = unlabeled_train_iter.__next__()
-        batch_size = inputs_x.size(0)
-        if inputs_u.size(0) <=1 or batch_size <= 1:
-            continue
 
-        # Transform label to one-hot
-        labels_x = torch.zeros(batch_size, args.num_class).scatter_(1, labels_x.view(-1,1), 1)
-        w_x = w_x.view(-1,1).type(torch.FloatTensor)
+    max_iters = ((len(labeled_trainloader.dataset)+len(unlabeled_trainloader.dataset))//args.batch_size)+1
+    cont_iters = 0 
 
-        inputs_x, inputs_x2, inputs_x3, inputs_x4, labels_x, w_x = inputs_x.cuda(), inputs_x2.cuda(), inputs_x3.cuda(), inputs_x4.cuda(), labels_x.cuda(), w_x.cuda()
-        inputs_u, inputs_u2, inputs_u3, inputs_u4 = inputs_u.cuda(), inputs_u2.cuda(), inputs_u3.cuda(), inputs_u4.cuda()
+    topK = 3
+    if epoch >= 40:
+        topK = 2
+    elif epoch >= 70:
+        topK = 1
 
-        with torch.no_grad():
-          # label co-guessing of unlabeled samples
-            outputs_u11 = net(inputs_u)
-            outputs_u12 = net(inputs_u2)
-            outputs_u21 = net2(inputs_u)
-            outputs_u22 = net2(inputs_u2)
-            # label refinement of labeled samples
-            outputs_x = net(inputs_x)
-            outputs_x2 = net(inputs_x2)
+    print("number of iterations: ", num_iter, max_iters)
 
-            if args.uncertainty:
-                evidence_u11 = softplus_evidence(outputs_u11)
-                evidence_u12 = softplus_evidence(outputs_u12)
-                evidence_u21 = softplus_evidence(outputs_u21)
-                evidence_u22 = softplus_evidence(outputs_u22)
-                alpha_u = evidence_u11/4 + evidence_u12/4 + evidence_u21/4 + evidence_u22/4 + args.evidence_factor
-                S_u = torch.sum(alpha_u, dim=1, keepdim=True)
-                pu = alpha_u / S_u
-                ptu = pu**(1/args.T)
+    while(cont_iters<max_iters): #longmix 
+        for batch_idx, (inputs_x, inputs_x2, inputs_x3, inputs_x4, labels_x, w_x, indices_x) in enumerate(labeled_trainloader):
+            try:
+                inputs_u, inputs_u2, inputs_u3, inputs_u4, labels_u, indices_u = unlabeled_train_iter.__next__()
+            except:
+                unlabeled_train_iter = iter(unlabeled_trainloader)
+                inputs_u, inputs_u2, inputs_u3, inputs_u4, labels_u, indices_u = unlabeled_train_iter.__next__()
+            batch_size = inputs_x.size(0)
+            if inputs_u.size(0) <=1 or batch_size <= 1:
+                continue
 
+            # Transform label to one-hot
+            labels_x = torch.zeros(batch_size, args.num_class).scatter_(1, labels_x.view(-1,1), 1)
+            w_x = w_x.view(-1,1).type(torch.FloatTensor)
+
+            inputs_x, inputs_x2, inputs_x3, inputs_x4, labels_x, w_x = inputs_x.cuda(), inputs_x2.cuda(), inputs_x3.cuda(), inputs_x4.cuda(), labels_x.cuda(), w_x.cuda()
+            inputs_u, inputs_u2, inputs_u3, inputs_u4 = inputs_u.cuda(), inputs_u2.cuda(), inputs_u3.cuda(), inputs_u4.cuda()
+
+            with torch.no_grad():
+            # label co-guessing of unlabeled samples
+                outputs_u11 = net(inputs_u)
+                outputs_u12 = net(inputs_u2)
+                outputs_u21 = net2(inputs_u)
+                outputs_u22 = net2(inputs_u2)
                 # label refinement of labeled samples
-                evidence_x = softplus_evidence(outputs_x)
-                evidence_x2 = softplus_evidence(outputs_x2)
-                alpha_x = evidence_x/2 + evidence_x2/2 + args.evidence_factor
-                S_x = torch.sum(alpha_x, dim=1, keepdim=True)
-                px = alpha_x / S_x
-                px = w_x*labels_x + (1-w_x)*px
-                ptx = px**(1/args.T) # temparature sharpening
+                outputs_x = net(inputs_x)
+                outputs_x2 = net(inputs_x2)
 
-            else:
-                # label co-guessing of unlabeled samples
-                pu = (torch.softmax(outputs_u11, dim=1) + torch.softmax(outputs_u12, dim=1) + torch.softmax(outputs_u21, dim=1) + torch.softmax(outputs_u22, dim=1)) / 4
-                ptu = pu**(1/args.T)
-                # label refinement of labeled samples
-                px = (torch.softmax(outputs_x, dim=1) + torch.softmax(outputs_x2, dim=1)) / 2
-                px = w_x*labels_x + (1-w_x)*px
-                ptx = px**(1/args.T) # temparature sharpening
+                if args.uncertainty:
+                    evidence_u11 = softplus_evidence(outputs_u11)
+                    evidence_u12 = softplus_evidence(outputs_u12)
+                    evidence_u21 = softplus_evidence(outputs_u21)
+                    evidence_u22 = softplus_evidence(outputs_u22)
+                    alpha_u = evidence_u11/4 + evidence_u12/4 + evidence_u21/4 + evidence_u22/4 + args.evidence_factor
+                    if args.uncertainty_class:
+                        alpha_e = alpha_u[:, :args.num_class]  # Extract the first `num_classes` columns
+                        alpha_u2 = torch.full((alpha_u.shape[0], 1), 10 + args.evidence_factor, dtype=torch.float32, device=device)
+                        alpha_u = torch.cat([alpha_e, alpha_u2], dim=1)
+                    S_u = torch.sum(alpha_u, dim=1, keepdim=True)
+                    pu = alpha_u / S_u
+                    ptu = pu**(1/args.T)
+
+                    # label refinement of labeled samples
+                    evidence_x = softplus_evidence(outputs_x)
+                    evidence_x2 = softplus_evidence(outputs_x2)
+                    alpha_x = evidence_x/2 + evidence_x2/2 + args.evidence_factor
+                    if args.uncertainty_class:
+                        alpha_e = alpha_x[:, :args.num_class]  # Extract the first `num_classes` columns
+                        alpha_u = torch.full((alpha_x.shape[0], 1), 10 + args.evidence_factor, dtype=torch.float32, device=device)
+                        alpha_x = torch.cat([alpha_e, alpha_u], dim=1)
+                        extra_class = torch.zeros((labels_x.shape[0], 1), dtype=labels_x.dtype, device=labels_x.device)
+                        labels_x = torch.cat([labels_x, extra_class], dim=1)
+
+                    S_x = torch.sum(alpha_x, dim=1, keepdim=True)
+                    px = alpha_x / S_x
+                    px = w_x*labels_x + (1-w_x)*px
+                    ptx = px**(1/args.T) # temparature sharpening
+
+                else:
+                    # label co-guessing of unlabeled samples
+                    pu = (torch.softmax(outputs_u11, dim=1) + torch.softmax(outputs_u12, dim=1) + torch.softmax(outputs_u21, dim=1) + torch.softmax(outputs_u22, dim=1)) / 4
+                    ptu = pu**(1/args.T)
+                    # label refinement of labeled samples
+                    px = (torch.softmax(outputs_x, dim=1) + torch.softmax(outputs_x2, dim=1)) / 2
+                    px = w_x*labels_x + (1-w_x)*px
+                    ptx = px**(1/args.T) # temparature sharpening
 
 
-            targets_u = ptu / ptu.sum(dim=1, keepdim=True) # normalize
-            targets_u = targets_u.detach()
-            targets_x = ptx / ptx.sum(dim=1, keepdim=True) # normalize
-            targets_x = targets_x.detach()
+                targets_u = ptu / ptu.sum(dim=1, keepdim=True) # normalize
+                targets_u = targets_u.detach()
+                targets_x = ptx / ptx.sum(dim=1, keepdim=True) # normalize
+                targets_x = targets_x.detach()
 
-        ## Unsupervised Contrastive Loss
-        if args.sim_clr:
-            f1, _ = net(inputs_u3, mode = "encoder")
-            f2, _ = net(inputs_u4, mode = "encoder")
-            f1 = F.normalize(f1, dim=1)
-            f2 = F.normalize(f2, dim=1)
-            features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
-            loss_simCLR = contrastive_criterion(features)
-        else:
-            loss_simCLR = 0
-        
-        # mixmatch
-        all_inputs = torch.cat([inputs_x3, inputs_x4, inputs_u3, inputs_u4], dim=0)
-        all_targets = torch.cat([targets_x, targets_x, targets_u, targets_u], dim=0)
-        idx = torch.randperm(all_inputs.size(0))
-        input_a, input_b = all_inputs, all_inputs[idx]
-        target_a, target_b = all_targets, all_targets[idx]
-        l = np.random.beta(args.alpha, args.alpha, size=(all_inputs.size(0), 1, 1, 1))  # Ensure broadcasting shape
-        l = np.maximum(l, 1 - l)
-        l = torch.from_numpy(l).float().cuda()
-        mixed_input = l * input_a + (1 - l) * input_b
-        l_targets = l.view(all_inputs.size(0), 1)
-        mixed_target = l_targets * target_a + (1 - l_targets) * target_b
-        logits = net(mixed_input)
 
-        #mixclr
-        if args.mix_clr:
-            all_inputs_1 = torch.cat([inputs_x3, inputs_u3], dim=0)
-            all_inputs_2 = torch.cat([inputs_x4, inputs_u4], dim=0)
-            idx = torch.randperm(all_inputs_1.size(0))
-            input_a1, input_b1 = all_inputs_1, all_inputs_1[idx]
-            input_a2, input_b2 = all_inputs_2, all_inputs_2[idx]
+            
+            # mixmatch
+            all_inputs = torch.cat([inputs_x3, inputs_x4, inputs_u3, inputs_u4], dim=0)
+            all_targets = torch.cat([targets_x, targets_x, targets_u, targets_u], dim=0)
 
-            l = np.random.beta(args.alpha, args.alpha, size=(all_inputs_1.size(0), 1, 1, 1))  # Ensure broadcasting shape
+
+            #mixed inputs
+            idx = torch.randperm(all_inputs.size(0))
+            input_a, input_b = all_inputs, all_inputs[idx]
+            target_a, target_b = all_targets, all_targets[idx]
+            l = np.random.beta(args.alpha, args.alpha, size=(all_inputs.size(0), 1, 1, 1))  # Ensure broadcasting shape
             l = np.maximum(l, 1 - l)
             l = torch.from_numpy(l).float().cuda()
-            mixed_input_1 = l * input_a1 + (1 - l) * input_b1
-            mixed_input_2 = l * input_a2 + (1 - l) * input_b2
+            mixed_input = l * input_a + (1 - l) * input_b
+            l_targets = l.view(all_inputs.size(0), 1)
+            mixed_target = l_targets * target_a + (1 - l_targets) * target_b
 
-            f1, _ = net(mixed_input_1, mode = "encoder")
-            f2, _ = net(mixed_input_2, mode = "encoder")
-            f1 = F.normalize(f1, dim=1)
-            f2 = F.normalize(f2, dim=1)
-            features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
-            loss_mixCLR = contrastive_criterion(features)
-        else:
-            loss_mixCLR = 0
-
-        if args.uncertainty:
-            evidence = softplus_evidence(logits)
-            alpha = evidence + args.evidence_factor
-            S = torch.sum(alpha, dim=1, keepdim=True)
-            probs = alpha / S
-            pred_mean = probs.mean(0)
-            outputs_x = logits[:batch_size*2]
-            probs_u = probs[batch_size*2:]
-            Lx, Lu, lamb = criterion(outputs_x, mixed_target[:batch_size*2], probs_u, mixed_target[batch_size*2:], epoch+batch_idx/num_iter, warm_up)
-
-        else:
-            pred_mean = torch.softmax(logits, dim=1).mean(0)
-            logits_x = logits[:batch_size*2]
-            logits_u = logits[batch_size*2:]
-            Lx, Lu, lamb = criterion(logits_x, mixed_target[:batch_size*2], logits_u, mixed_target[batch_size*2:], epoch+batch_idx/num_iter, warm_up)
+            #mixclr inputs
+            idx_aux = torch.randperm(int(all_inputs.size(0)/4))
+            idx = torch.cat([2*int(all_inputs.size(0)/4) + idx_aux, 3*int(all_inputs.size(0)/4) + idx_aux, idx_aux, int(all_inputs.size(0)/4) + idx_aux])
+            input_a, input_b = all_inputs, all_inputs[idx]
+            target_a, target_b = all_targets, all_targets[idx]
+            l = np.random.beta(args.alpha, args.alpha)
+            l = max(l, 1 - l)
+            mixclr_input = l * input_a + (1 - l) * input_b
 
 
-        #regularization
-        prior = torch.ones(args.num_class)/args.num_class
-        prior = prior.cuda()
-        penalty = torch.sum(prior*torch.log(prior/pred_mean))
+            #model outputs
+            inputs = torch.cat([mixed_input, all_inputs, mixclr_input], dim=0)
+            all_logits, all_features = net(inputs, forward_pass='cls_proj')
 
-        loss = Lx + lamb * Lu + penalty + args.lambda_c*(loss_simCLR + 0.2*loss_mixCLR)
-        train_loss += loss
-        train_loss_lx += Lx
-        train_loss_u += Lu
-        train_loss_penalty += penalty
-        train_loss_simclr += loss_simCLR
-        train_loss_mixclr += loss_mixCLR
+            mixed_logits = all_logits[:mixed_input.shape[0]]
+            mixclr_logits = all_logits[2*mixed_input.shape[0]:]
+            logits = all_logits[mixed_input.shape[0]:2*mixed_input.shape[0]]
+            mixed_features = all_features[:mixed_input.shape[0]]
+            mixclr_features = all_features[2*mixed_input.shape[0]:]
+            features = all_features[mixed_input.shape[0]:2*mixed_input.shape[0]]
 
-        # compute gradient and do SGD step
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            loss_plr = loss_mix_plr = loss_simCLR = loss_mixCLR = 0
 
-    if args.sim_clr:
-        sys.stdout.write(f'\r{args.dataset}: {args.r:.1f}-{args.noise_mode} | Epoch [{epoch:3d}/{args.num_epochs}] Iter[{batch_idx+1:3d}/{num_iter:3d}]\t Labeled loss: {train_loss_lx.item()/num_iter:.2f}  Unlabeled loss: {train_loss_u.item()/num_iter:.2f}   SimCLR loss: {train_loss_simclr.item()/num_iter:.2f}')
-        sys.stdout.flush()
-    else: 
-        sys.stdout.write(f'\r{args.dataset}: {args.r:.1f}-{args.noise_mode} | Epoch [{epoch:3d}/{args.num_epochs}] Iter[{batch_idx+1:3d}/{num_iter:3d}]\t Labeled loss: {train_loss_lx.item()/num_iter:.2f}  Unlabeled loss: {train_loss_u.item()/num_iter:.2f}')
-        sys.stdout.flush()
+            if args.plr_loss:
+                indices = torch.cat((indices_x, indices_u), dim=0)
+                eval_outputs = op[indices, :]
+                labels_u = labels_u.cuda()
+                labels_x = torch.argmax(labels_x, dim=1)
+                labels = torch.cat((labels_x, labels_u), dim=0)
+                
+                contrastive_mask = Contrastive_loss.build_mask_step(eval_outputs, topK, labels, device) 
+                
+                fx3, fx4, fu3, fu4 = torch.chunk(features, 4, dim=0)
+                f1, f2 = torch.cat([fx3, fu3], dim=0), torch.cat([fx4, fu4], dim=0)
+                features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
+                loss_plr = plr_loss(features, mask=contrastive_mask) #unsupervised loss: positive examples are 2 augmentations of the same sample only. Negative examples are samples that do no share the same class between the topk predicted classes
+                
+                #mix
+                #fx3, fx4, fu3, fu4 = torch.chunk(mixclr_features, 4, dim=0)
+                #f1, f2 = torch.cat([fx3, fu3], dim=0), torch.cat([fx4, fu4], dim=0)
+                #features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
+                #loss_mix_plr = plr_loss(features, mask=contrastive_mask) #unsupervised loss: positive examples are 2 augmentations of the same sample only. Negative examples are samples that do no share the same class between the topk predicted classes
+
+
+            if args.sim_clr:
+                fx3, fx4, fu3, fu4 = torch.chunk(features, 4, dim=0) # same indices
+
+                fu, fx = torch.cat([fu3.unsqueeze(1), fu4.unsqueeze(1)], dim=1), torch.cat([fx3.unsqueeze(1), fx4.unsqueeze(1)], dim=1)
+                loss_simCLR_u = contrastive_criterion2(fu)#unsupervised simclr loss
+                loss_simCLR = loss_simCLR_u
+
+                if args.sim_supervised_clr:
+                    labels_x = torch.argmax(labels_x, dim=1)
+                    labels_x = labels_x.view(-1, 1)
+                    loss_simCLR_x = contrastive_criterion2(fx, labels_x)#supervised simclr loss
+                    loss_simCLR = loss_simCLR_u + loss_simCLR_x
+                else:
+                    loss_simCLR = loss_simCLR_u
+                
+
+            if args.mix_clr:      
+                fx3, fx4, fu3, fu4 = torch.chunk(mixclr_features, 4, dim=0)
+                fu, fx = torch.cat([fu3.unsqueeze(1), fu4.unsqueeze(1)], dim=1), torch.cat([fx3.unsqueeze(1), fx4.unsqueeze(1)], dim=1)
+                f_all = torch.cat([fu, fx], dim=0) 
+                loss_mixCLR = contrastive_criterion2(f_all)#unsupervised mixclr loss"""
+
+
+            if args.uncertainty:
+                evidence = softplus_evidence(mixed_logits)
+                alpha = evidence + args.evidence_factor
+                if args.uncertainty_class:
+                    alpha_e = alpha[:, :args.num_class]  # Extract the first `num_classes` columns
+                    alpha_u = torch.full((alpha.shape[0], 1), 10 + args.evidence_factor, dtype=torch.float32, device=device)
+                    alpha = torch.cat([alpha_e, alpha_u], dim=1)
+                S = torch.sum(alpha, dim=1, keepdim=True)
+                probs = alpha / S
+                pred_mean = probs.mean(0)
+                outputs_x = mixed_logits[:batch_size*2]
+                probs_u = probs[batch_size*2:]
+
+                Lx, Lu, lamb = criterion(outputs_x, mixed_target[:batch_size*2], probs_u, mixed_target[batch_size*2:], epoch+batch_idx/num_iter, warm_up)
+
+            else:
+                pred_mean = torch.softmax(mixed_logits, dim=1).mean(0)
+                logits_x = mixed_logits[:batch_size*2]
+                logits_u = mixed_logits[batch_size*2:]
+                Lx, Lu, lamb = criterion(logits_x, mixed_target[:batch_size*2], logits_u, mixed_target[batch_size*2:], epoch+batch_idx/num_iter, warm_up)
+
+
+            #regularization
+            if args.uncertainty_class:
+                prior = torch.ones(args.num_class+1)/(args.num_class+1)
+            else:
+                prior = torch.ones(args.num_class)/args.num_class
+
+            prior = prior.cuda()
+            penalty = torch.sum(prior*torch.log(prior/pred_mean))
+
+            loss = Lx + lamb * Lu + penalty + args.lambda_plr*(loss_plr + 0.2*loss_mix_plr) + args.lambda_c*(loss_simCLR + 0.2*loss_mixCLR)
+            train_loss += loss
+            train_loss_lx += Lx
+            train_loss_u += Lu
+            train_loss_penalty += penalty
+            contrastive_loss += args.lambda_plr*(loss_plr + 0.2*loss_mix_plr) + args.lambda_c*(loss_simCLR + 0.2*loss_mixCLR)
+
+            # compute gradient and do SGD step
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            """sys.stdout.write('\r')
+            sys.stdout.write('%s:%.1f-%s | Epoch [%3d/%3d] Iter[%3d/%3d]\t Labeled loss: %.2f  Unlabeled loss: %.2f'
+                             % (args.dataset, args.r, args.noise_mode, epoch, args.num_epochs, batch_idx + 1, num_iter,
+                                Lx.item(), Lu.item()))
+            sys.stdout.flush()"""
+
+            cont_iters = cont_iters + 1
+            if cont_iters == max_iters:
+                break
 
     all_train_loss.append(train_loss)
     all_train_loss_x.append(train_loss_lx)
     all_train_loss_u.append(train_loss_u)
+    all_train_loss_contrastive.append(contrastive_loss)
+    print("contrastive loss", contrastive_loss, "loss ", train_loss_lx.item())
 
     if savelog:
         train_loss /= len(labeled_trainloader.dataset)
         train_loss_lx /= len(labeled_trainloader.dataset)
         train_loss_u /= len(labeled_trainloader.dataset)
         train_loss_penalty /= len(labeled_trainloader.dataset)
+        contrastive_loss /= len(labeled_trainloader.dataset)
 
-    return all_train_loss, all_train_loss_x, all_train_loss_u
+    return all_train_loss, all_train_loss_x, all_train_loss_u, all_train_loss_contrastive
 
 
 
@@ -213,15 +292,18 @@ def warmup(epoch,net,optimizer,dataloader,savelog=False):
     net.train()
     wm_loss = 0
     num_iter = (len(dataloader.dataset)//dataloader.batch_size)+1
-    for batch_idx, (inputs, labels, _) in enumerate(dataloader):  
+    for batch_idx, (inputs, inputs_aug1, inputs_aug2, labels, path) in enumerate(dataloader): 
         batch_size = inputs.size(0)
         y = torch.zeros(batch_size, args.num_class).scatter_(1, labels.view(-1,1), 1)    
         inputs, labels = inputs.cuda(), labels.cuda() 
         optimizer.zero_grad()
         outputs = net(inputs) 
                       
-        if args.uncertainty:    
-            loss, _ = edl_loss(outputs, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+        if args.uncertainty:
+            if args.uncertainty_class:
+                loss, _ = m_edl_loss(outputs, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+            else:    
+                loss, _ = edl_loss(outputs, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
         elif args.gce_loss:
             loss = gce_loss(outputs, labels)
         else:
@@ -294,29 +376,50 @@ def test(epoch,net1,net2, acc_hist, loss_hist):
     return acc_hist, loss_hist
 
 
-def eval_train(model, all_loss, all_preds, all_hist, all_margin_true_label, all_margins_labels, all_evidences, eval_loss_hist, eval_acc_hist, clean_labels, savelog=False):
+def eval_train(model, all_loss, all_preds, all_hist, all_margins_labels, eval_loss_hist, eval_acc_hist, clean_labels, net_idx, savelog=False):
     model.eval()
     correct_indices = []
     noisy_correct_indices = []
 
     losses = torch.zeros(len(eval_loader.dataset))
+
     margins_labels = torch.zeros(len(eval_loader.dataset))
     margin_true_label = torch.zeros(len(eval_loader.dataset))
-    evidences = torch.zeros(len(eval_loader.dataset))
+    evidences =  torch.zeros(len(eval_loader.dataset))
+
+    vacuity = torch.zeros(len(eval_loader.dataset))
+    dissonance = torch.zeros(len(eval_loader.dataset))
+    entropy = torch.zeros(len(eval_loader.dataset))
+    uncertainty_class = torch.zeros(len(eval_loader.dataset))
     
     preds = torch.zeros(len(eval_loader.dataset))
     preds_classes = torch.zeros(len(eval_loader.dataset), args.num_class)
     eval_loss = train_acc = acc_clean = acc_noisy = 0
+
+    #plr
+    losses_proto = torch.zeros(len(eval_loader.dataset))
+    pl = torch.zeros(len(eval_loader.dataset), dtype=torch.long, device=device)
+    op = torch.zeros(len(eval_loader.dataset), args.num_class, dtype=torch.float, device=device)
+    pt = torch.zeros(len(eval_loader.dataset), args.num_class, dtype=torch.float, device=device)
+    ft = torch.zeros(len(eval_loader.dataset), 128, dtype=torch.float, device=device)
 
     with torch.no_grad():
         for batch_idx, (inputs, targets, index) in enumerate(eval_loader):
             batch_size = inputs.size(0)
             y = torch.zeros(batch_size, args.num_class).scatter_(1, targets.view(-1,1), 1)    
             inputs, targets = inputs.cuda(), targets.cuda()
-            outputs = model(inputs)
+            outputs, logits_proto, features = model(inputs, forward_pass='all')
 
             if args.uncertainty:
-                loss, loss_per_sample = edl_loss(outputs, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+                if args.uncertainty_class:
+                    loss, loss_per_sample = m_edl_loss(outputs, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+                else:
+                    loss, loss_per_sample = edl_loss(outputs, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+                
+                #compute prototype loss with
+                if args.plr_loss:
+                    _, loss_proto = edl_loss(logits_proto, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+                
                 evidence = softplus_evidence(outputs)
                 alpha = evidence + args.evidence_factor
                 
@@ -328,9 +431,9 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margin_true_label, all_
                 eval_preds = F.softmax(outputs, -1).cpu().data
                 eval_loss += loss
 
-            _, pred = torch.max(outputs.data, -1)
-            _, _, _, margin, top_evidence = compute_dirichlet_metrics(outputs, args.num_class, args.edl_activation, args.evidence_factor)
 
+            _, pred = torch.max(outputs.data, -1)
+            vac, entr, diss, margin, evide, uncert = compute_dirichlet_metrics(outputs, args.num_class, args.edl_activation, args.evidence_factor)
             
             #marc: compute accuracy of clean and noisy samples with ground true labels and noisy labels
             inds_clean_set = set(map(int, inds_clean))  # Ensure all values are Python ints
@@ -355,7 +458,6 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margin_true_label, all_
             noisy_correct_predictions = (pred == noisy_labels_tensor[index])
             noisy_correct_indices.extend(index.cpu()[noisy_correct_predictions.cpu()].tolist())
 
-
             for b in range(inputs.size(0)):
                 losses[index[b]]=loss_per_sample[b]
                 preds[index[b]] = eval_preds[b][targets[b]]
@@ -364,190 +466,130 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margin_true_label, all_
             if args.uncertainty:
                 for b in range(inputs.size(0)):
                     margins_labels[index[b]] =  margin[b]
-                    evidences[index[b]] =  top_evidence[b]
+                    vacuity[index[b]]=vac[b]
+                    dissonance[index[b]]=diss[b]
+                    entropy[index[b]]=entr[b]
+                    evidences[index[b]] = evide[b]
+                    uncertainty_class[index[b]] = uncert[b]
 
+                    #compute margins of true labels
                     evidence_pos = outputs[b,targets[b]]
                     copy_outputs = outputs[b].clone()
                     copy_outputs[targets[b]] = -1e5
                     evidence_neg = copy_outputs.max()
                     margin_true_label[index[b]]=evidence_pos-evidence_neg
 
+                    if args.plr_loss:
+                        losses_proto[index[b]] = loss_proto[b]
+                        pl[index[b]] = pred[b]
+                        op[index[b]] = outputs[b]
+                        pt[index[b]] = logits_proto[b]
+                        ft[index[b]] = features[b]
+                    
+
     losses = (losses-losses.min())/(losses.max() - losses.min())
-    margins_labels = (margins_labels - margins_labels.min())/(margins_labels.max()- margins_labels.min())
-    margin_true_label = (margin_true_label - margin_true_label.min())/(margin_true_label.max() - margin_true_label.min())
-    evidences =  (evidences - evidences.min())/(evidences.max()- evidences.min())
+    losses_proto = (losses_proto - losses_proto.min()) / (losses_proto.max() - losses_proto.min())
+    #margins_labels = (margins_labels - margins_labels.min())/(margins_labels.max()- margins_labels.min())
+    #margin_true_label = (margin_true_label - margin_true_label.min())/(margin_true_label.max() - margin_true_label.min())
+    #vacuity = (vacuity - vacuity.min())/(vacuity.max() - vacuity.min())
+    #dissonance = (dissonance - dissonance.min())/(dissonance.max() - dissonance.min())
+    #entropy = (entropy - entropy.min())/(entropy.max() - entropy.min())
+    #evidences =  (evidences - evidences.min())/(evidences.max() - evidences.min())
 
     eval_loss_hist.append(losses)
-    all_loss.append(losses)
     all_preds.append(preds)
+    all_loss.append(losses)
     all_hist.append(preds_classes)
-    all_margin_true_label.append(margin_true_label)
     all_margins_labels.append(margins_labels)
-    all_evidences.append(evidences)
     eval_acc_hist.append([train_acc/len(eval_loader.dataset), acc_clean/len(inds_clean), acc_noisy/len(inds_noisy)])
-
-    if args.r==0.9: # average loss over last 5 epochs to improve convergence stability
-        history = torch.stack(all_loss)
-        input_loss = history[-5:].mean(0)
-        input_loss = input_loss.reshape(-1,1)
-    else:
-        input_loss = losses.reshape(-1,1)
-
-    # fit a two-component GMM to the loss
-    gmm = GaussianMixture(n_components=2,max_iter=10,tol=1e-2,reg_covar=5e-4)
-    gmm.fit(input_loss)
-    prob = gmm.predict_proba(input_loss)
-    prob_loss = prob[:,gmm.means_.argmin()]
-
-    # fit a two-component GMM to the margins
-    input_margin = margin_true_label.reshape(-1,1)
-    gmm = GaussianMixture(n_components=2,max_iter=10,tol=1e-2,reg_covar=5e-4)
-    gmm.fit(input_margin)
-    prob = gmm.predict_proba(input_margin) 
-    prob_margin = prob[:,gmm.means_.argmax()]
-    return prob_loss, prob_margin, all_loss, all_preds, all_hist, all_margin_true_label, all_margins_labels, all_evidences, eval_loss_hist, eval_acc_hist, correct_indices, noisy_correct_indices
-
-
-def get_superclean_extra(prob1, prob2, all_superclean, all_labeled, all_unlabeled, threshold):
-    if threshold < 0.5:
-        pred1 = (threshold < prob1) & (prob1 <= 0.5)    
-        pred2 = (threshold < prob2) & (prob2 <= 0.5)
-    else:
-        pred1 = (threshold > prob1) & (prob1 >= 0.5)    
-        pred2 = (threshold > prob2) & (prob2 >= 0.5)
-    idx_view_labeled = (pred1).nonzero()[0]
-    idx_view_unlabeled = (1-pred1).nonzero()[0]
-    all_labeled[0].append(idx_view_labeled)
-    all_labeled[1].append((pred2).nonzero()[0])
-    all_unlabeled[0].append(idx_view_unlabeled)
-    all_unlabeled[1].append((1-pred2).nonzero()[0])
-
-    #check hist of predclean net 1
-    superclean = []
-    nclean = args.num_clean
-    for ii in range(len(eval_loader.dataset)):
-        clean_lastn = True
-        for h_ep in all_labeled[0][-nclean:]:   #check last nclean epochs
-            if ii not in h_ep:
-                clean_lastn = False
-                break
-        if clean_lastn:
-            superclean.append(ii)
-    all_superclean[0].append(superclean)
-    pred1 = np.array([True if p in superclean else False for p in range(len(pred1))])
-
-    #check hist of predclean net 2
-    superclean = []
-    nclean = args.num_clean
-    for ii in range(len(eval_loader.dataset)):
-        clean_lastn = True
-        for h_ep in all_labeled[1][-nclean:]:   #check last nclean epochs
-            if ii not in h_ep:
-                clean_lastn = False
-                break
-        if clean_lastn:
-            superclean.append(ii)
-    all_superclean[1].append(superclean)
-    pred2 = np.array([True if p in superclean else False for p in range(len(pred2))])
-
-    return all_superclean, pred1, pred2, all_labeled, all_unlabeled
-
-
-def get_superclean_relabeled(prob1, prob2, all_superclean, all_labeled, all_unlabeled, threshold):
-    """pred1 = (prob1 > threshold)      
-    pred2 = (prob2 > threshold)
-    idx_view_labeled = pred1.nonzero(as_tuple=True)[0]
-    idx_view_unlabeled = (~pred1).nonzero(as_tuple=True)[0]
-    all_labeled[0].append(idx_view_labeled)
-    all_labeled[1].append(pred2.nonzero(as_tuple=True)[0])
-    all_unlabeled[0].append(idx_view_unlabeled)
-    all_unlabeled[1].append((~pred2).nonzero(as_tuple=True)[0])  # Fix applied here"""
-    pred1 = (prob1 > threshold)   
-    pred2 = (prob2 > threshold)
-    pred1 = pred1.cpu().numpy()
-    pred2 = pred2.cpu().numpy()
-    idx_view_labeled = pred1.nonzero()[0]
-    idx_view_unlabeled = (1-pred1).nonzero()[0]
-    all_labeled[0].append(idx_view_labeled)
-    all_labeled[1].append(pred2.nonzero()[0])
-    all_unlabeled[0].append(idx_view_unlabeled)
-    all_unlabeled[1].append((1-pred2).nonzero()[0])
-
-    """#check hist of predclean net 1
-    superclean = []
-    nclean = args.num_clean
-    for ii in range(len(eval_loader.dataset)):
-        clean_lastn = True
-        for h_ep in all_labeled[0][-nclean:]:   #check last nclean epochs
-            if ii not in h_ep:
-                clean_lastn = False
-                break
-        if clean_lastn:
-            superclean.append(ii)
-    all_superclean[0].append(superclean)
-    pred1 = np.array([True if p in superclean else False for p in range(len(pred1))])
-
-    #check hist of predclean net 2
-    superclean = []
-    nclean = args.num_clean
-    for ii in range(len(eval_loader.dataset)):
-        clean_lastn = True
-        for h_ep in all_labeled[1][-nclean:]:   #check last nclean epochs
-            if ii not in h_ep:
-                clean_lastn = False
-                break
-        if clean_lastn:
-            superclean.append(ii)
-    all_superclean[1].append(superclean)
-    pred2 = np.array([True if p in superclean else False for p in range(len(pred2))])"""
-
-    return all_superclean, pred1, pred2, all_labeled, all_unlabeled
     
-def get_superclean(prob1, prob2, all_superclean, all_labeled, all_unlabeled):
-    pred1 = (prob1 > args.p_threshold)      
-    pred2 = (prob2 > args.p_threshold)
-    idx_view_labeled = (pred1).nonzero()[0]
-    idx_view_unlabeled = (1-pred1).nonzero()[0]
-    all_labeled[0].append(idx_view_labeled)
-    all_labeled[1].append((pred2).nonzero()[0])
-    all_unlabeled[0].append(idx_view_unlabeled)
-    all_unlabeled[1].append((1-pred2).nonzero()[0])
+    all_evidence[net_idx].append(evidences)
+    all_vacuity[net_idx].append(vacuity)
+    all_dissonance[net_idx].append(dissonance)
+    all_entropy[net_idx].append(entropy)
+    all_margin_true_label[net_idx].append(margin_true_label)
+    all_uncertainty_class[net_idx].append(uncertainty_class)
 
-    #check hist of predclean net 1
-    superclean = []
-    nclean = args.num_clean
-    for ii in range(len(eval_loader.dataset)):
-        clean_lastn = True
-        for h_ep in all_labeled[0][-nclean:]:   #check last nclean epochs
-            if ii not in h_ep:
-                clean_lastn = False
-                break
-        if clean_lastn:
-            superclean.append(ii)
-    all_superclean[0].append(superclean)
-    pred1 = np.array([True if p in superclean else False for p in range(len(pred1))])
+    
+    if args.use_loss:
+        if args.r==0.9: # average loss over last 5 epochs to improve convergence stability
+            history = torch.stack(all_loss)
+            input_loss = history[-5:].mean(0)
+            input_loss = input_loss.reshape(-1,1)
+            input_loss_proto = losses_proto.reshape(-1, 1)
+        else:
+            input_loss = losses.reshape(-1,1)
+            input_loss_proto = losses_proto.reshape(-1, 1)
 
-    #check hist of predclean net 2
-    superclean = []
-    nclean = args.num_clean
-    for ii in range(len(eval_loader.dataset)):
-        clean_lastn = True
-        for h_ep in all_labeled[1][-nclean:]:   #check last nclean epochs
-            if ii not in h_ep:
-                clean_lastn = False
-                break
-        if clean_lastn:
-            superclean.append(ii)
-    all_superclean[1].append(superclean)
-    pred2 = np.array([True if p in superclean else False for p in range(len(pred2))])
+        # fit a two-component GMM to the loss
+        if args.plr_loss:
+            input_loss = input_loss.cpu().numpy()
+            input_loss_proto = input_loss_proto.cpu().numpy()
+            gmm_input = np.column_stack((input_loss, input_loss_proto))
+            gmm = GaussianMixture(n_components=2, max_iter=10, tol=1e-2, reg_covar=5e-4)
+            gmm.fit(gmm_input)
+            mean_square_dists = np.array([np.sum(np.square(gmm.means_[i])) for i in range(2)])
+            argmin, argmax = mean_square_dists.argmin(), mean_square_dists.argmax()
+            prob = gmm.predict_proba(gmm_input)
+            prob = prob[:, argmin]
 
-    values_idx =[]
-    for target in np.arange(0.1, 1.0, 0.1):
-        closest_index = (np.abs(np.array(prob1) - target)).argmin()
-        values_idx.append(closest_index)
+        else:
+            gmm = GaussianMixture(n_components=2,max_iter=10,tol=1e-2,reg_covar=5e-4)
+            gmm.fit(input_loss)
+            prob = gmm.predict_proba(input_loss)
+            prob = prob[:,gmm.means_.argmin()]
 
-    return all_superclean, pred1, pred2, all_labeled, all_unlabeled, values_idx
+    else:#use margins
+        if args.r==0.9: # average loss over last 5 epochs to improve convergence stability
+            history = torch.stack(all_loss)
+            input_margin = history[-5:].mean(0)
+            input_margin = input_margin.reshape(-1,1)
+        else:
+            input_margin = margin_true_label.reshape(-1,1)
+        # fit a two-component GMM to the margins
+        gmm = GaussianMixture(n_components=2,max_iter=10,tol=1e-2,reg_covar=5e-4)
+        gmm.fit(input_margin)
+        prob = gmm.predict_proba(input_margin) 
+        prob = prob[:,gmm.means_.argmax()]
 
+    return prob, all_loss, all_preds, all_hist, all_margins_labels, eval_loss_hist, eval_acc_hist, correct_indices, noisy_correct_indices, {'op': op, 'pl': pl, 'pt': pt, 'ft': ft}
+
+
+def get_clean(prob, net_idx):
+    pred = (prob > args.p_threshold)      
+    idx_view_labeled = (pred).nonzero()[0]
+    idx_view_unlabeled = (1-pred).nonzero()[0]
+    all_idx_view_labeled[net_idx].append(idx_view_labeled)
+    all_idx_view_unlabeled[net_idx].append(idx_view_unlabeled)
+
+    thr_labeled, thr_unlabeled = get_thresholds(all_margins_labels[net_idx][-1], idx_view_labeled, idx_view_unlabeled)
+
+    pred_labeled = (all_margins_labels[net_idx][-1] < thr_unlabeled)   
+    pred_labeled = pred_labeled.cpu().numpy()
+    idx_remove_labeled = pred_labeled.nonzero()[0]
+    all_idx_view_remove_labeled[net_idx].append(idx_remove_labeled)
+
+    pred_unlabeled = (all_margins_labels[net_idx][-1] > thr_labeled)  
+    pred_unlabeled = pred_unlabeled.cpu().numpy()
+    idx_relabel_unlabeled = pred_unlabeled.nonzero()[0]
+    all_idx_view_relabel_unlabeled[net_idx].append(idx_relabel_unlabeled)
+
+    pred_loss = np.array([True if p in idx_view_labeled else False for p in range(len(pred))])
+
+    threshold = []
+    closest_index = (np.abs(np.array(prob) - 0.5)).argmin()
+    threshold.append(closest_index)
+
+    return pred_loss, threshold, thr_labeled, thr_unlabeled
+
+
+def get_thresholds(all_margins_labels, idx_view_labeled, idx_view_unlabeled):
+    margins_labeled = all_margins_labels[idx_view_labeled]
+    thr_labeled = margins_labeled.mean()
+    margins_unlabeled = all_margins_labels[idx_view_unlabeled]
+    thr_unlabeled = margins_unlabeled.mean()
+
+    return thr_labeled, thr_unlabeled
 
 
 def linear_rampup(current, warm_up, rampup_length=16):
@@ -565,7 +607,10 @@ class SemiLoss(object):
       elif args.uncertainty:
           probs_u = outputs_u
           Lu = torch.mean((probs_u - targets_u)**2)
-          Lx, _ = edl_loss(outputs_x, targets_x.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+          if args.uncertainty_class:
+            Lx, _ = m_edl_loss(outputs_x, targets_x.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+          else:  
+            Lx, _ = edl_loss(outputs_x, targets_x.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
           return Lx, Lu, linear_rampup(epoch,warm_up)
 
 class NegEntropy(object):
@@ -587,6 +632,23 @@ def create_model():
     model = model.cuda()
     return model
 
+def create_model_resnet():
+    model = SupCEResNet('resnet18', num_classes=args.num_class)
+    chekpoint = torch.load('pretrained/ckpt_{}_resnet18.pth'.format(args.dataset))
+    if args.use_pretrained:
+        chekpoint = torch.load('pretrained/ckpt_{}_resnet18.pth'.format(args.dataset))
+        sd = {}
+        for ke in chekpoint['model']:
+            nk = ke.replace('module.', '')
+            sd[nk] = chekpoint['model'][ke]
+        missing_keys, unexpected_keys = model.load_state_dict(sd, strict=False)
+        print(f"Missing keys: {missing_keys}")
+        print(f"Unexpected keys: {unexpected_keys}")
+        
+        model.load_state_dict(sd, strict=False)
+
+    model = model.cuda()
+    return model
 
 def guess_unlabeled(net1, net2, unlabeled_trainloader):
     net1.eval()
@@ -628,37 +690,37 @@ def save_models(save_path):
 
                     'all_idx_view_labeled': all_idx_view_labeled,
                     'all_idx_view_unlabeled': all_idx_view_unlabeled,
-                    'all_idx_view_labeled_margin': all_idx_view_labeled_margin,
-                    'all_idx_view_unlabeled_margin': all_idx_view_unlabeled_margin,
-                    'all_idx_view_labeled_relabeled': all_idx_view_labeled_relabeled,
-                    'all_idx_view_unlabeled_relabeled': all_idx_view_unlabeled_relabeled,
-                    'all_idx_view_labeled_extra': all_idx_view_labeled_extra,
-                    'all_idx_view_unlabeled_extra': all_idx_view_unlabeled_extra,
+                    'all_idx_view_remove_labeled': all_idx_view_remove_labeled,
+                    'all_idx_view_relabel_unlabeled': all_idx_view_relabel_unlabeled,
+                    'all_idx_superclean': all_idx_superclean,
 
-                    'all_superclean': all_superclean,
-                    'all_superclean_margin': all_superclean_margin,
-                    'all_superclean_relabeled': all_superclean_relabeled,
-                    'all_superclean_extra': all_superclean_extra,
 
                     'acc_hist': acc_hist,
-                    'all_evidences': all_evidences,
                     'all_margins_labels': all_margins_labels,
-                    'all_margin_true_label': all_margin_true_label,
 
                     'eval_acc_hist': eval_acc_hist,
                     'eval_loss_hist': eval_loss_hist,
                     'test_acc_hist': test_acc_hist,
                     'test_losses_hist': test_losses_hist,
                     'all_margins_labels': all_margins_labels,
-                    'all_margin_true_label': all_margin_true_label,
                     'loss_train': loss_train,
                     'loss_train_x': loss_train_x,
                     'loss_train_u': loss_train_u,
+                    'train_loss_contrastive' : train_loss_contrastive,
+
+                    'relabel_idx_1': relabel_idx_1,
+                    'relabel_idx_2': relabel_idx_2,
+
+                    'new_labels_1': new_labels_1,
+                    'new_labels_2': new_labels_2,
+
+                    'all_vacuity': all_vacuity,
+                    'all_dissonance': all_dissonance,
+                    'all_entropy': all_entropy,
+                    'all_evidence': all_evidence,
+                    'all_margin_true_label': all_margin_true_label,
+                    'all_uncertainty_class': all_uncertainty_class,
                     })
-    state3 = ({
-                'all_superclean': all_superclean,
-                'all_superclean_margin': all_superclean_margin,
-                })
 
 
     if epoch%1==0:
@@ -666,100 +728,48 @@ def save_models(save_path):
         torch.save(state, fn2)
         if not os.path.exists('hcs'):
             os.makedirs('hcs')
-        fn3 = os.path.join('hcs/', 'hcs_%s_%.2f_%s_cn%d_run%d.pth.tar'%(args.dataset, args.r, args.noise_mode,args.num_clean, args.run))
-        torch.save(state3, fn3)
 
-def write_log_superclean2(all_superclean, predicted1, predicted2, log_file):
-    acc_union = get_metrics_superclean2(predicted2, clean_labels, list(set(all_superclean[0]) | set(all_superclean[1])))
-    acc_intersection =get_metrics_superclean2(predicted2, clean_labels, list(set(all_superclean[0]) & set(all_superclean[1])))
-    acc_union_noisy = get_metrics_superclean2(predicted2, clean_labels, list((set(all_superclean[0]) | set(all_superclean[1])) & set(inds_clean)))
-    acc_intersection_noisy =get_metrics_superclean2(predicted2, clean_labels, list((set(all_superclean[0]) & set(all_superclean[1])) & set(inds_clean)))
+    if epoch == 29:
+        fn2 = os.path.join(save_path, f'model_ckpt_epoch{epoch}.pth.tar')
+        torch.save(state, fn2)
 
-    # Define superclean sets
-    union_superclean = set(all_superclean[0]) | set(all_superclean[1])
-    intersection_superclean = set(all_superclean[0]) & set(all_superclean[1])
-    
-    union_num_superclean = len(union_superclean)
-    intersection_num_superclean = len(intersection_superclean)
+    if epoch == 79:
+        fn2 = os.path.join(save_path, f'model_ckpt_epoch{epoch}.pth.tar')
+        torch.save(state, fn2)
+        
+
+def write_log(idx, predicted, log_file, threshold = None):
+    acc, prec, recall = get_metrics(predicted, clean_labels, idx)
+
     total_instances = len(eval_loader.dataset)
-    
-    # Compute statistics for union
-    percentage_superclean = (union_num_superclean / total_instances) * 100
+    percentage = (len(idx) / total_instances) * 100
     true_clean_indices = set(inds_clean)
-    correct_superclean = len(union_superclean & true_clean_indices)
-    superclean_accuracy = (correct_superclean / union_num_superclean) * 100 if union_num_superclean > 0 else 0.0
 
-    # Write results for union
-
+    correct_superclean = len(set(idx) & true_clean_indices)
+    clean_accuracy = (correct_superclean / len(idx)) * 100 if len(idx) > 0 else 0.0
+    
     log_file.write(f"Epoch: {epoch}\n")
-
-    log_file.write(f"Number of superclean instances: {union_num_superclean}\n")
-    log_file.write(f"Percentage of superclean instances: {percentage_superclean:.2f}%\n")
-    log_file.write(f"Accuracy of superclean instances (clean vs noisy): {superclean_accuracy:.2f}%\n")
-    log_file.write(f"Accuracy of the superclean instances (true class): {acc_union:.2f}%\n")
-    log_file.write(f"Accuracy of the superclean instances (clean instances): {acc_union_noisy:.2f}%\n")
+    log_file.write(f"Number of superclean instances: {len(idx)}\n")
+    log_file.write(f"Percentage of superclean instances: {percentage:.2f}%\n")
+    log_file.write(f"Accuracy of superclean instances (clean vs noisy): {acc:.2f}%  \t {prec:.2f}% \t {recall:.2f}%\n")
+    log_file.write(f"Accuracy - precision - recall (with respect to clean indices): {clean_accuracy:.2f}%\n")
     log_file.write("-" * 50 + "\n")
     log_file.flush()
+    clean_metrics.append([len(idx), percentage, acc, prec, recall])
 
-    # Compute statistics for intersection
-    percentage_superclean = (intersection_num_superclean / total_instances) * 100
-    correct_superclean = len(intersection_superclean & true_clean_indices)
-    superclean_accuracy = (correct_superclean / intersection_num_superclean) * 100 if intersection_num_superclean > 0 else 0.0
+def write_log2(idx, predicted, log_file, threshold = None):
+    acc, prec, recall = get_metrics(predicted, correct_indices1, idx)
 
-    # Write results for intersection
-    log_file.write(f"Number of superclean instances (intersection): {intersection_num_superclean}\n")
-    log_file.write(f"Percentage of superclean instances (intersection): {percentage_superclean:.2f}%\n")
-    log_file.write(f"Accuracy of superclean instances (intersection) (clean vs noisy): {superclean_accuracy:.2f}%\n")
-    log_file.write(f"Accuracy of the superclean instances (intersection) (true class): {acc_intersection:.2f}%\n")
-    log_file.write(f"Accuracy of the superclean instances (clean instances): {acc_intersection_noisy:.2f}%\n")
-    log_file.write("-" * 50 + "\n")
-    log_file.flush()
-
-
-def write_log_superclean(all_superclean, predicted, log_file, threshold = None):
-    acc_union, acc_intersection, acc_union_comp, acc_intersection_comp = get_metrics_superclean(predicted, clean_labels, all_superclean)
-
-    # Define superclean sets
-    union_superclean = set(all_superclean[0]) | set(all_superclean[1])
-    intersection_superclean = set(all_superclean[0]) & set(all_superclean[1])
-    
-    union_num_superclean = len(union_superclean)
-    intersection_num_superclean = len(intersection_superclean)
     total_instances = len(eval_loader.dataset)
+    percentage = (len(idx) / total_instances) * 100
     
-    # Compute statistics for union
-    percentage_superclean = (union_num_superclean / total_instances) * 100
-    true_clean_indices = set(inds_clean)
-    correct_superclean = len(union_superclean & true_clean_indices)
-    superclean_accuracy = (correct_superclean / union_num_superclean) * 100 if union_num_superclean > 0 else 0.0
-
-    # Write results for union
-    if threshold:
-        log_file.write(f"Epoch: {epoch}, threshold {threshold}\n")
-    else:
-        log_file.write(f"Epoch: {epoch}\n")
-
-    log_file.write(f"Number of superclean instances: {union_num_superclean}\n")
-    log_file.write(f"Percentage of superclean instances: {percentage_superclean:.2f}%\n")
-    log_file.write(f"Accuracy of superclean instances (clean vs noisy): {superclean_accuracy:.2f}%\n")
-    log_file.write(f"Accuracy of the superclean instances (true class): {acc_union:.2f}%\n")
-    log_file.write(f"Accuracy of the NOT superclean instances (true class): {acc_union_comp:.2f}%\n")
+    log_file.write(f"Epoch: {epoch}\n")
+    log_file.write(f"Number of superclean instances: {len(idx)}\n")
+    log_file.write(f"Percentage of superclean instances: {percentage:.2f}%\n")
+    log_file.write(f"Accuracy - precision - recall (with respect to correct indices): {acc:.2f}%  \t {prec:.2f}% \t {recall:.2f}%\n")
     log_file.write("-" * 50 + "\n")
     log_file.flush()
-
-    # Compute statistics for intersection
-    percentage_superclean = (intersection_num_superclean / total_instances) * 100
-    correct_superclean = len(intersection_superclean & true_clean_indices)
-    superclean_accuracy = (correct_superclean / intersection_num_superclean) * 100 if intersection_num_superclean > 0 else 0.0
-
-    # Write results for intersection
-    log_file.write(f"Number of superclean instances (intersection): {intersection_num_superclean}\n")
-    log_file.write(f"Percentage of superclean instances (intersection): {percentage_superclean:.2f}%\n")
-    log_file.write(f"Accuracy of superclean instances (intersection) (clean vs noisy): {superclean_accuracy:.2f}%\n")
-    log_file.write(f"Accuracy of the superclean instances (intersection) (true class): {acc_intersection:.2f}%\n")
-    log_file.write(f"Accuracy of the NOT superclean instances (intersection) (true class): {acc_intersection_comp:.2f}%\n")
-    log_file.write("-" * 50 + "\n")
-    log_file.flush()
+    correct_metrics.append([len(idx), percentage, acc, prec, recall])
 
 def test_superclean(net1, net2):
     net1.eval()
@@ -797,66 +807,30 @@ def test_superclean(net1, net2):
     
     return all_predicted, all_predicted1, all_predicted2
 
-def get_metrics_superclean2(predicted, clean_labels, all_superclean):
-    # Initialize accuracy counters
-    acc = 0
-    # Convert clean labels to tensor
+def get_metrics(predicted, clean_labels, idx):
+    # Ensure torch tensors
+    predicted = torch.tensor(predicted) if not torch.is_tensor(predicted) else predicted
     clean_labels_tensor = torch.tensor(clean_labels, dtype=torch.long)
+    idx = torch.tensor(idx) if not torch.is_tensor(idx) else idx
 
-    # Compute accuracy for union superclean
-    if len(all_superclean) > 0:
-        correct_union = (predicted[all_superclean] == clean_labels_tensor[all_superclean]).sum().item()
-        acc = correct_union / len(all_superclean)
-    return 100*acc
+    if len(idx) == 0:
+        return 0.0, 0.0, 0.0  # Avoid divide-by-zero
 
+    # Subset predictions and labels
+    y_pred = predicted[idx]
+    y_true = clean_labels_tensor[idx]
 
-def get_metrics_superclean(predicted, clean_labels, all_superclean):
-    # Initialize accuracy counters
-    acc_union = acc_intersection = 0
-    acc_union_comp = acc_intersection_comp = 0
+    # Accuracy
+    acc = (y_pred == y_true).sum().item() / len(idx)
 
-    # Define superclean sets
-    union_superclean = set(all_superclean[0]) | set(all_superclean[1])  # Union of both sets
-    intersection_superclean = set(all_superclean[0]) & set(all_superclean[1])  # Intersection
-    total_samples = len(clean_labels)  # Assuming 50,000 samples, use dynamic length
+    # Precision and recall (macro-averaged across classes)
+    precision = precision_score(y_true.numpy(), y_pred.numpy(), average='macro', zero_division=0)
+    recall = recall_score(y_true.numpy(), y_pred.numpy(), average='macro', zero_division=0)
 
-    # Convert clean labels to tensor
-    clean_labels_tensor = torch.tensor(clean_labels, dtype=torch.long)
-
-    # Get indices of union and intersection sets
-    union_indices = torch.tensor(list(union_superclean))
-    intersection_indices = torch.tensor(list(intersection_superclean))
-
-    # Compute accuracy for union superclean
-    if len(union_indices) > 0:
-        correct_union = (predicted[union_indices] == clean_labels_tensor[union_indices]).sum().item()
-        acc_union = correct_union / len(union_indices)
-
-    # Compute accuracy for intersection superclean
-    if len(intersection_indices) > 0:
-        correct_intersection = (predicted[intersection_indices] == clean_labels_tensor[intersection_indices]).sum().item()
-        acc_intersection = correct_intersection / len(intersection_indices)
-
-    # Compute accuracy for the complement of union
-    union_comp_indices = torch.tensor([i for i in range(total_samples) if i not in union_superclean])
-    if len(union_comp_indices) > 0:
-        correct_union_comp = (predicted[union_comp_indices] == clean_labels_tensor[union_comp_indices]).sum().item()
-        acc_union_comp = correct_union_comp / len(union_comp_indices)
-
-    # Compute accuracy for the complement of intersection
-    intersection_comp_indices = torch.tensor([i for i in range(total_samples) if i not in intersection_superclean])
-    if len(intersection_comp_indices) > 0:
-        correct_intersection_comp = (predicted[intersection_comp_indices] == clean_labels_tensor[intersection_comp_indices]).sum().item()
-        acc_intersection_comp = correct_intersection_comp / len(intersection_comp_indices)
-
-    return 100*acc_union, 100*acc_intersection, 100*acc_union_comp, 100*acc_intersection_comp
+    return 100 * acc, 100 * precision, 100 * recall
 
 
 
-"""class_number = 100
-dataset_name = 'cifar100'
-dataset_path = './cifar-100'
-number_epochs = 300"""
 
 class_number = 10
 dataset_name = 'cifar10'
@@ -865,226 +839,6 @@ number_epochs = 30
 
 
 
-
-
-argum=[
-    argparse.Namespace(
-    batch_size=64,
-    lr=0.02,
-    noise_mode='sym',
-    alpha=4,
-    lambda_u=0,
-    lambda_c = 0.025,
-    p_threshold=0.5,
-    T=0.5,
-    num_epochs=number_epochs,
-    num_clean=5,
-    r=0.2,
-    id='',
-    seed=123,
-    gpuid=0,
-    run=0,
-    num_class=class_number,
-    data_path= dataset_path,
-    dataset='cifar100',
-    ann_step = 0.5,
-    uncertainty = True, 
-    evidence_factor = 1/10,
-    gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
-    use_pretrained = False,
-    edl_loss = edl_log_loss,
-    edl_activation = softplus_evidence,
-    use_loss = False,
-    name_exp = "0.2_ctnt"),
-
-    argparse.Namespace(
-    batch_size=64,
-    lr=0.02,
-    noise_mode='sym',
-    alpha=4,
-    lambda_u=0,
-    lambda_c = 0.025,
-    p_threshold=0.5,
-    T=0.5,
-    num_epochs=number_epochs,
-    num_clean=5,
-    r=0.2,
-    id='',
-    seed=123,
-    gpuid=0,
-    run=0,
-    num_class=class_number,
-    data_path= dataset_path,
-    dataset='cifar100',
-    ann_step = 0,
-    uncertainty = True, 
-    evidence_factor = 1/10,
-    gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
-    use_pretrained = False,
-    edl_loss = edl_log_loss,
-    edl_activation = softplus_evidence,
-    use_loss = True,
-    name_exp = "0.2_0"),
-
-    argparse.Namespace(
-    batch_size=64,
-    lr=0.02,
-    noise_mode='sym',
-    alpha=4,
-    lambda_u=0,
-    lambda_c = 0.025,
-    p_threshold=0.5,
-    T=0.5,
-    num_epochs=number_epochs,
-    num_clean=5,
-    r=0.8,
-    id='',
-    seed=123,
-    gpuid=0,
-    run=0,
-    num_class=class_number,
-    data_path= dataset_path,
-    dataset='cifar100',
-    ann_step = 0.5,
-    uncertainty = True, 
-    evidence_factor = 1/10,
-    gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
-    use_pretrained = False,
-    edl_loss = edl_log_loss,
-    edl_activation = softplus_evidence,
-    use_loss = False,
-    name_exp = "0.8_ctnt"),
-
-    argparse.Namespace(
-    batch_size=64,
-    lr=0.02,
-    noise_mode='sym',
-    alpha=4,
-    lambda_u=0,
-    lambda_c = 0.025,
-    p_threshold=0.5,
-    T=0.5,
-    num_epochs=number_epochs,
-    num_clean=5,
-    r=0.8,
-    id='',
-    seed=123,
-    gpuid=0,
-    run=0,
-    num_class=class_number,
-    data_path= dataset_path,
-    dataset='cifar100',
-    ann_step = 0,
-    uncertainty = True, 
-    evidence_factor = 1/10,
-    gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
-    use_pretrained = False,
-    edl_loss = edl_log_loss,
-    edl_activation = softplus_evidence,
-    use_loss = True,
-    name_exp = "0.8_0"),
-
-    argparse.Namespace(
-    batch_size=64,
-    lr=0.02,
-    noise_mode='sym',
-    alpha=4,
-    lambda_u=0,
-    lambda_c = 0.025,
-    p_threshold=0.5,
-    T=0.5,
-    num_epochs=number_epochs,
-    num_clean=5,
-    r=0.2,
-    id='',
-    seed=123,
-    gpuid=0,
-    run=0,
-    num_class=class_number,
-    data_path= dataset_path,
-    dataset='cifar100',
-    ann_step = 0.01,
-    uncertainty = True, 
-    evidence_factor = 1/10,
-    gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
-    use_pretrained = False,
-    edl_loss = edl_log_loss,
-    edl_activation = softplus_evidence,
-    use_loss = True,
-    name_exp = "0.2_0.01"),
-
-    argparse.Namespace(
-    batch_size=64,
-    lr=0.02,
-    noise_mode='sym',
-    alpha=4,
-    lambda_u=0,
-    lambda_c = 0.025,
-    p_threshold=0.5,
-    T=0.5,
-    num_epochs=number_epochs,
-    num_clean=5,
-    r=0.8,
-    id='',
-    seed=123,
-    gpuid=0,
-    run=0,
-    num_class=class_number,
-    data_path= dataset_path,
-    dataset='cifar100',
-    ann_step = 0.01,
-    uncertainty = True, 
-    evidence_factor = 1/10,
-    gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
-    use_pretrained = False,
-    edl_loss = edl_log_loss,
-    edl_activation = softplus_evidence,
-    use_loss = True,
-    name_exp = "0.8_0.01"),
-
-    argparse.Namespace(
-    batch_size=64,
-    lr=0.02,
-    noise_mode='sym',
-    alpha=4,
-    lambda_u=0,
-    lambda_c = 0.025,
-    p_threshold=0.5,
-    T=0.5,
-    num_epochs=number_epochs,
-    num_clean=5,
-    r=0.2,
-    id='',
-    seed=123,
-    gpuid=0,
-    run=0,
-    num_class=class_number,
-    data_path= dataset_path,
-    dataset='cifar100',
-    ann_step = 0.1,
-    uncertainty = True, 
-    evidence_factor = 1/10,
-    gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
-    use_pretrained = False,
-    edl_loss = edl_log_loss,
-    edl_activation = softplus_evidence,
-    use_loss = True,
-    name_exp = "0.2_0.1")]
-
 a = [
     argparse.Namespace(
     batch_size=64,
@@ -1092,38 +846,6 @@ a = [
     noise_mode='sym',
     alpha=4,
     lambda_u=0,
-    lambda_c = 0.025,
-    p_threshold=0.5,
-    T=0.5,
-    num_epochs=number_epochs,
-    num_clean=5,
-    r=0.8,
-    id='',
-    seed=123,
-    gpuid=0,
-    run=0,
-    num_class=class_number,
-    data_path= dataset_path,
-    dataset='cifar100',
-    ann_step = 0.1,
-    uncertainty = True, 
-    evidence_factor = 1/10,
-    gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
-    use_pretrained = False,
-    edl_loss = edl_log_loss,
-    edl_activation = softplus_evidence,
-    use_loss = True,
-    name_exp = "0.8_0.1"),
-
-    argparse.Namespace(
-    batch_size=64,
-    lr=0.02,
-    noise_mode='sym',
-    alpha=4,
-    lambda_u=0,
-    lambda_c = 0.025,
     p_threshold=0.5,
     T=0.5,
     num_epochs=number_epochs,
@@ -1136,17 +858,26 @@ a = [
     num_class=class_number,
     data_path= dataset_path,
     dataset='cifar100',
-    ann_step = 0.05,
-    uncertainty = True, 
-    evidence_factor = 1/10,
     gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
     use_pretrained = False,
+
+    uncertainty = True,
     edl_loss = edl_log_loss,
     edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.01, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
     use_loss = True,
-    name_exp = "0.2_0.05"),
+    name_exp = "0.2_simclr",
+
+    lambda_plr = 0.5,
+    plr_loss = False,
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = True,
+    mix_clr = False,
+    ),
 
     argparse.Namespace(
     batch_size=64,
@@ -1154,12 +885,11 @@ a = [
     noise_mode='sym',
     alpha=4,
     lambda_u=0,
-    lambda_c = 0.025,
     p_threshold=0.5,
     T=0.5,
     num_epochs=number_epochs,
     num_clean=5,
-    r=0.8,
+    r=0.2,
     id='',
     seed=123,
     gpuid=0,
@@ -1167,24 +897,35 @@ a = [
     num_class=class_number,
     data_path= dataset_path,
     dataset='cifar100',
-    ann_step = 0.05,
-    uncertainty = True, 
-    evidence_factor = 1/10,
     gce_loss = False,
-    sim_clr = False,
-    mix_clr = False,
     use_pretrained = False,
+
+    uncertainty = True,
     edl_loss = edl_log_loss,
     edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.01, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
     use_loss = True,
-    name_exp = "0.8_0.05"),
+    name_exp = "0.2_mixclr",
+
+    lambda_plr = 0.5,
+    plr_loss = False,
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = True,
+    mix_clr = True,
+    ),
 ]
+
+
 
 for args in a:
     if args.dataset == 'cifar100':
         args.num_class=100
         args.data_path= './cifar-100'
-        args.num_epochs = 200
+        args.num_epochs = 100
 
     elif args.dataset == 'cifar10':
         args.num_class=10
@@ -1197,6 +938,15 @@ for args in a:
     random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+
+    flat=False
+    info_nce_loss = Contrastive_loss.InfoNCELoss(temperature=0.1,
+                                    batch_size=args.batch_size * 2,
+                                    flat=flat,
+                                    n_views=2)
+    plr_loss = Contrastive_loss.PLRLoss(flat=flat)
+    device = torch.device("cuda")
+
 
     #adapt lambda_u parametr according to psscl
     if args.noise_mode == "sym":
@@ -1213,6 +963,7 @@ for args in a:
     
     #criterion
     edl_loss = args.edl_loss
+    m_edl_loss = m_edl_log_loss
     ce_loss_sample = nn.CrossEntropyLoss(reduction='none')
     ce_loss = nn.CrossEntropyLoss()
     if args.noise_mode=='asym':
@@ -1232,32 +983,21 @@ for args in a:
     Path(os.path.join(path_exp, 'savedDicts')).mkdir(parents=True, exist_ok=True)
     Path(path_plot).mkdir(parents=True, exist_ok=True)
 
-
-    incomplete = os.path.exists("./checkpoint/%s/model_ckpt.pth.tar"%(exp_str))
+    model_path = "./checkpoint/%s/model_ckpt.pth.tar"%(exp_str)
+    incomplete = os.path.exists(model_path)
     print('Incomplete...', incomplete)
 
     if incomplete == False:
-        stats_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_stats.txt','w') 
-        test_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str,args.dataset,args.r,args.noise_mode)+'_acc.txt','w') 
-        time_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_time.txt','w') 
-        superclean_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean.txt','w')
-
-        relabeled_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_relabeled.txt','w')
-        superclean_relabeled_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean_relabeled.txt','w')
-
-        extra_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_extra.txt','w')
-        superclean_extra_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean_extra.txt','w')
-    else:    
-        stats_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_stats.txt','a') 
-        test_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str,args.dataset,args.r,args.noise_mode)+'_acc.txt','a') 
-        time_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_time.txt','a') 
-        superclean_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean.txt','a')
-
-        relabeled_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_relabeled.txt','a')
-        superclean_relabeled_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean_relabeled.txt','a')
-
-        extra_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_extra.txt','a')
-        superclean_extra_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean_extra.txt','a')
+        log_mode = 'w'
+    else:
+        log_mode = 'a'
+    stats_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_stats.txt',log_mode) 
+    test_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str,args.dataset,args.r,args.noise_mode)+'_acc.txt',log_mode) 
+    time_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_time.txt',log_mode) 
+    superclean_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean.txt',log_mode)
+    filtered_superclean_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_filtered_superclean.txt',log_mode)
+    relabeled_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_relabeled.txt',log_mode)
+    remove_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_remove.txt',log_mode)
 
     if args.dataset=='cifar10':
         warm_up = 10
@@ -1283,7 +1023,7 @@ for args in a:
     resume_epoch = 0
     if incomplete == True:
         print('loading Model...\n')
-        load_path = 'checkpoint/%s/model_ckpt.pth.tar'%(exp_str)
+        load_path = model_path
         ckpt = torch.load(load_path)
         resume_epoch = ckpt['epoch']+1
         print('resume_epoch....', resume_epoch)
@@ -1294,19 +1034,14 @@ for args in a:
 
         all_idx_view_labeled = ckpt['all_idx_view_labeled']
         all_idx_view_unlabeled = ckpt['all_idx_view_unlabeled']
-        all_idx_view_labeled_margin = ckpt['all_idx_view_labeled_margin']
-        all_idx_view_unlabeled_margin = ckpt['all_idx_view_unlabeled_margin']
-        all_idx_view_labeled_extra = ckpt['all_idx_view_labeled_extra']
-        all_idx_view_unlabeled_extra = ckpt['all_idx_view_unlabeled_extra']
-        all_idx_view_labeled_relabeled = ckpt['all_idx_view_labeled_relabeled']
-        all_idx_view_unlabeled_relabeled = ckpt['all_idx_view_unlabeled_relabeled']
+        all_idx_view_remove_labeled = ckpt['all_idx_view_remove_labeled']
+        all_idx_view_relabel_unlabeled = ckpt['all_idx_view_relabel_unlabeled']
+        all_idx_superclean = ckpt['all_idx_superclean']
 
         all_preds = ckpt['all_preds']
         hist_preds = ckpt['hist_preds']
         acc_hist = ckpt['acc_hist']
         all_loss = ckpt['all_loss']
-        all_evidences = ckpt['all_evidences']
-        all_margin_true_label = ckpt['all_margin_true_label']
         all_margins_labels = ckpt['all_margins_labels']
 
         eval_loss_hist = ckpt['eval_loss_hist']
@@ -1316,35 +1051,35 @@ for args in a:
         loss_train = ckpt.get("loss_train", [[],[]])
         loss_train_x = ckpt.get("loss_train_x", [[],[]])
         loss_train_u = ckpt.get("loss_train_u", [[],[]])
-        all_superclean_relabeled = ckpt['all_superclean_relabeled']
-        all_superclean_extra = ckpt["all_superclean_extra"]
+        train_loss_contrastive = ckpt.get("train_loss_contrastive", [[],[]])
 
-        superclean_path =os.path.join('hcs/', 'hcs_%s_%.2f_%s_cn%d_run%d.pth.tar'%(args.dataset, args.r, args.noise_mode,args.num_clean, args.run))
-        ckpt = torch.load(superclean_path)
-        all_superclean = ckpt['all_superclean']
-        all_superclean_margin = ckpt["all_superclean_margin"]
+        new_labels_1 = ckpt['new_labels_1']
+        new_labels_2 = ckpt['new_labels_2']
+        relabel_idx_1 = ckpt['relabel_idx_1']
+        relabel_idx_2 = ckpt['relabel_idx_2']
+
+        all_vacuity = ckpt['all_vacuity']
+        all_dissonance = ckpt['all_dissonance']
+        all_entropy = ckpt['all_entropy']
+        all_evidence = ckpt['all_evidence']
+        all_margin_true_label = ckpt['all_margin_true_label']
+        all_uncertainty_class = ckpt.get("all_uncertainty_class", [[],[]])
+
+        clean_metrics= ckpt['clean_metrics']
+        correct_metrics = ckpt['correct_metrics']
+
 
     else:
-        all_superclean = [[],[]]
-        all_superclean_margin = [[],[]]
-        all_superclean_relabeled = [[],[]]
-        all_superclean_extra = [[],[]]
-
         all_idx_view_labeled = [[],[]]
         all_idx_view_unlabeled = [[], []]
-        all_idx_view_labeled_margin = [[], []]
-        all_idx_view_unlabeled_margin = [[], []]
-        all_idx_view_labeled_extra = [[],[]]
-        all_idx_view_unlabeled_extra = [[], []]
-        all_idx_view_labeled_relabeled = [[], []]
-        all_idx_view_unlabeled_relabeled = [[], []]
+        all_idx_view_remove_labeled = [[], []]
+        all_idx_view_relabel_unlabeled = [[], []]
+        all_idx_superclean = [[], []]
 
         all_preds = [[], []] # save the history of preds for two networks
         hist_preds = [[],[]]
         acc_hist = []
         all_loss = [[],[]] # save the history of losses from two networks
-        all_evidences = [[],[]]
-        all_margin_true_label = [[],[]]
         all_margins_labels = [[],[]]
 
         eval_loss_hist = [[], []]
@@ -1354,23 +1089,33 @@ for args in a:
         loss_train = [[],[]]
         loss_train_x = [[],[]]
         loss_train_u = [[],[]]
+        train_loss_contrastive = [[],[]]
 
+        new_labels_1 = []
+        new_labels_2 = []
+        relabel_idx_1 = []
+        relabel_idx_2 = []
 
-    test_loader = loader.run('test')
-    eval_loader = loader.run('eval_train') 
+        all_vacuity = [[],[]]
+        all_dissonance = [[],[]]
+        all_entropy = [[],[]]
+        all_evidence = [[],[]]
+        all_margin_true_label = [[],[]]
+        all_uncertainty_class = [[],[]]
+
+        clean_metrics= []
+        correct_metrics = []
+
+    second_ind = True
+    test_loader = loader.run('test', second_ind=second_ind)
+    eval_loader = loader.run('eval_train', second_ind=second_ind)
     noisy_labels = eval_loader.dataset.noise_label
     clean_labels = eval_loader.dataset.train_label 
     inds_noisy = np.asarray([ind for ind in range(len(noisy_labels)) if noisy_labels[ind] != clean_labels[ind]])
     inds_clean = np.delete(np.arange(len(noisy_labels)), inds_noisy)
 
-
     total_time =  0
     warmup_time = 0
-
-    if resume_epoch == 201:
-        all_superclean_relabeled
-        all_idx_view_labeled_relabeled
-
 
     for epoch in range(resume_epoch, args.num_epochs+1):   
         lr=args.lr
@@ -1385,7 +1130,6 @@ for args in a:
             
         if epoch<warm_up:       
             warmup_trainloader = loader.run('warmup')
-
             start_time = time.time()
             print('Warmup Net1')
             warmup(epoch,net1,optimizer1,warmup_trainloader, savelog=True)    
@@ -1395,110 +1139,149 @@ for args in a:
             total_time+= end_time
             warmup_time+= end_time
 
-            prob_loss1, prob_margin1, all_loss[0], all_preds[0], hist_preds[0], all_margin_true_label[0], all_margins_labels[0], all_evidences[0], eval_loss_hist[0], eval_acc_hist[0], correct_indices1, noisy_correct_indices1 = eval_train(net1, all_loss[0], all_preds[0], hist_preds[0], all_margin_true_label[0], all_margins_labels[0], all_evidences[0], eval_loss_hist[0], eval_acc_hist[0], clean_labels)
-            prob_loss2, prob_margin2, all_loss[1], all_preds[1], hist_preds[1], all_margin_true_label[1], all_margins_labels[1], all_evidences[1], eval_loss_hist[1], eval_acc_hist[1], correct_indices2, noisy_correct_indices2 = eval_train(net2, all_loss[1], all_preds[1], hist_preds[1], all_margin_true_label[1], all_margins_labels[1], all_evidences[1], eval_loss_hist[1], eval_acc_hist[1], clean_labels) 
+            if args.plr_loss:
+                Contrastive_loss.init_prototypes(net1, eval_loader, device)
+                Contrastive_loss.init_prototypes(net2, eval_loader, device)
 
+            prob_loss1, all_loss[0], all_preds[0], hist_preds[0], all_margins_labels[0], eval_loss_hist[0], eval_acc_hist[0], correct_indices1, noisy_correct_indices1, _ = eval_train(net1, all_loss[0], all_preds[0], hist_preds[0], all_margins_labels[0], eval_loss_hist[0], eval_acc_hist[0], clean_labels, net_idx = 0)
+            prob_loss2, all_loss[1], all_preds[1], hist_preds[1], all_margins_labels[1], eval_loss_hist[1], eval_acc_hist[1], correct_indices2, noisy_correct_indices2, _ = eval_train(net2, all_loss[1], all_preds[1], hist_preds[1], all_margins_labels[1], eval_loss_hist[1], eval_acc_hist[1], clean_labels, net_idx = 1) 
+            pred_loss1, threshold_loss_1, thr1_labeled, thr1_unlabeled = get_clean(prob_loss1, net_idx = 0)
+            pred_loss2, threshold_loss_2, thr2_labeled, thr2_unlabeled = get_clean(prob_loss2, net_idx = 1)
+            predicted_labels1 = torch.argmax(hist_preds[0][-1], dim=1)
+            predicted_labels2 = torch.argmax(hist_preds[1][-1], dim=1)
 
-            all_superclean, pred_loss1, pred_loss2, all_idx_view_labeled, all_idx_view_unlabeled, indices_values = get_superclean(prob_loss1, prob_loss2, all_superclean, all_idx_view_labeled, all_idx_view_unlabeled)
-            all_superclean_margin, pred_margin1, pred_margin2, all_idx_view_labeled_margin, all_idx_view_unlabeled_margin, indices_values_margin = get_superclean(prob_margin1, prob_margin2, all_superclean_margin, all_idx_view_labeled_margin, all_idx_view_unlabeled_margin)
-            all_superclean_extra, _, _, all_idx_view_labeled_extra, all_idx_view_unlabeled_extra = get_superclean_extra(prob_loss1, prob_loss2, all_superclean_extra, all_idx_view_labeled_extra, all_idx_view_unlabeled_extra, threshold = 0.5)   
-
-
+            #predicted_labels, predicted_labels1, predicted_labels2 = test_superclean(net1, net2)
+            inds_equal = np.asarray([ind for ind in range(len(noisy_labels)) if noisy_labels[ind] == predicted_labels1[ind]])
+            inds_diff = np.delete(np.arange(len(noisy_labels)), inds_equal)
+            
             if epoch==(warm_up-1):
                 time_log.write('Warmup: %f \n'%(warmup_time))
-                time_log.flush()  
+                time_log.flush()
+
+            write_log(all_idx_view_labeled[0][-1], predicted_labels1, log_file=superclean_log)
+            write_log2(all_idx_view_labeled[0][-1], predicted_labels1, log_file=superclean_log)
             
         else:       
-            print("training epoch ", epoch)
-            start_time = time.time()
-            prob_loss1, prob_margin1, all_loss[0], all_preds[0], hist_preds[0], all_margin_true_label[0], all_margins_labels[0], all_evidences[0], eval_loss_hist[0], eval_acc_hist[0], correct_indices1, noisy_correct_indices1 = eval_train(net1, all_loss[0], all_preds[0], hist_preds[0], all_margin_true_label[0], all_margins_labels[0], all_evidences[0], eval_loss_hist[0], eval_acc_hist[0], clean_labels)
-            prob_loss2, prob_margin2, all_loss[1], all_preds[1], hist_preds[1], all_margin_true_label[1], all_margins_labels[1], all_evidences[1], eval_loss_hist[1], eval_acc_hist[1], correct_indices2, noisy_correct_indices2 = eval_train(net2, all_loss[1], all_preds[1], hist_preds[1], all_margin_true_label[1], all_margins_labels[1], all_evidences[1], eval_loss_hist[1], eval_acc_hist[1], clean_labels) 
-            all_superclean, pred_loss1, pred_loss2, all_idx_view_labeled, all_idx_view_unlabeled, indices_values = get_superclean(prob_loss1, prob_loss2, all_superclean, all_idx_view_labeled, all_idx_view_unlabeled)
-            all_superclean_margin, pred_margin1, pred_margin2, all_idx_view_labeled_margin, all_idx_view_unlabeled_margin, indices_values_margin = get_superclean(prob_margin1, prob_margin2, all_superclean_margin, all_idx_view_labeled_margin, all_idx_view_unlabeled_margin)
+            print("training epoch ", epoch)       
+            start_time = time.time()               
+            if epoch < args.epoch_relabel:
+                prob_loss1, all_loss[0], all_preds[0], hist_preds[0], all_margins_labels[0], eval_loss_hist[0], eval_acc_hist[0], correct_indices1, noisy_correct_indices1, op1 = eval_train(net1, all_loss[0], all_preds[0], hist_preds[0], all_margins_labels[0], eval_loss_hist[0], eval_acc_hist[0], clean_labels, net_idx = 0)
+                prob_loss2, all_loss[1], all_preds[1], hist_preds[1], all_margins_labels[1], eval_loss_hist[1], eval_acc_hist[1], correct_indices2, noisy_correct_indices2, op2 = eval_train(net2, all_loss[1], all_preds[1], hist_preds[1], all_margins_labels[1], eval_loss_hist[1], eval_acc_hist[1], clean_labels, net_idx = 1) 
+
+            else:
+                eval_loader = loader.run('eval_train', relabel_inds = relabel_idx_1, new_labels= new_labels_1)
+                prob_loss1, all_loss[0], all_preds[0], hist_preds[0], all_margins_labels[0], eval_loss_hist[0], eval_acc_hist[0], correct_indices1, noisy_correct_indices1, op1 = eval_train(net1, all_loss[0], all_preds[0], hist_preds[0], all_margins_labels[0], eval_loss_hist[0], eval_acc_hist[0], clean_labels, net_idx = 0)
+                eval_loader = loader.run('eval_train', relabel_inds = relabel_idx_2, new_labels= new_labels_2)
+                prob_loss2, all_loss[1], all_preds[1], hist_preds[1], all_margins_labels[1], eval_loss_hist[1], eval_acc_hist[1], correct_indices2, noisy_correct_indices2, op2 = eval_train(net2, all_loss[1], all_preds[1], hist_preds[1], all_margins_labels[1], eval_loss_hist[1], eval_acc_hist[1], clean_labels, net_idx = 1) 
+
+
+            pred_loss1, threshold_loss_1, thr1_labeled, thr1_unlabeled = get_clean(prob_loss1, net_idx = 0)
+            pred_loss2, threshold_loss_2, thr2_labeled, thr2_unlabeled = get_clean(prob_loss2, net_idx = 1)
+
+            #predicted_labels, predicted_labels1, predicted_labels2 = test_superclean(net1, net2)
+            predicted_labels1 = torch.argmax(hist_preds[0][-1], dim=1)
+            predicted_labels2 = torch.argmax(hist_preds[1][-1], dim=1)
+
+            inds_equal = np.asarray([ind for ind in range(len(noisy_labels)) if noisy_labels[ind] == predicted_labels1[ind]])
+            inds_diff = np.delete(np.arange(len(noisy_labels)), inds_equal)
+            
+            if epoch >= args.epoch_relabel-1:
+                relabel_idx_1 = list(set(relabel_idx_1) | (set(all_idx_view_relabel_unlabeled[0][-1]) - set(all_idx_superclean[0][-1])))
+                new_labels_1 = predicted_labels1[relabel_idx_1].to(torch.int64)
+                relabel_idx_2 = list(set(relabel_idx_2) | set(all_idx_view_relabel_unlabeled[1][-1]) - set(all_idx_superclean[1][-1]))
+                new_labels_2 = predicted_labels2[relabel_idx_2].to(torch.int64)
+
+            #write log superclean
+            write_log(all_idx_view_labeled[0][-1], predicted_labels1, log_file=superclean_log)
+            write_log2(all_idx_view_labeled[0][-1], predicted_labels1, log_file=superclean_log)
 
             end_time = round(time.time() - start_time)
             total_time+= end_time
-
-
-            predicted_labels, predicted_labels1, predicted_labels2 = test_superclean(net1, net2)
-
-            #write log superclean
-            all_last_elements = [sublist[-1] for sublist in all_superclean]
-            write_log_superclean(all_last_elements, predicted_labels, log_file=superclean_log)
-            all_last_elements_margin = [sublist[-1] for sublist in all_superclean_margin]
-            write_log_superclean(all_last_elements_margin, predicted_labels, log_file=superclean_log)
-
-            #log superclean extra:
-            threshold_extra = 1 - len(all_idx_view_labeled[0][-1])/50000
-            all_superclean_extra, _, _, all_idx_view_labeled_extra, all_idx_view_unlabeled_extra = get_superclean_extra(prob_loss1, prob_loss2, all_superclean_extra, all_idx_view_labeled_extra, all_idx_view_unlabeled_extra, threshold = threshold_extra)
-            filtered_elements = [all_idx_view_labeled_extra[0][-1], all_idx_view_labeled_extra[0][-1]]
-            write_log_superclean(filtered_elements, predicted_labels1, log_file = extra_log, threshold = threshold_extra)
-            
-            filtered_elements = [all_idx_view_labeled_extra[0][-1], all_idx_view_labeled_extra[1][-1]]
-            write_log_superclean(filtered_elements, predicted_labels, log_file = superclean_extra_log, threshold = threshold_extra)
-
-            #write log superclean relabeled
-            for threshold in [0.2, 0.4]:
-                all_superclean_relabeled, _, _, all_idx_view_labeled_relabeled, all_idx_view_unlabeled_relabeled = get_superclean_relabeled(all_margins_labels[0][-1], all_margins_labels[1][-1], all_superclean_relabeled, all_idx_view_labeled_relabeled, all_idx_view_unlabeled_relabeled, threshold = threshold)  
-                all_last_elements_relabel = [sublist[-1] for sublist in all_idx_view_labeled_relabeled]
-                filtered_elements = [[index for index in all_last_elements_relabel[0] if index not in all_idx_view_labeled[0][-1]], [index for index in all_last_elements_relabel[0] if index not in all_idx_view_labeled[0][-1]]]
-                write_log_superclean(filtered_elements, predicted_labels1, log_file= relabeled_log, threshold=threshold)
-                filtered_elements = [[index for index in all_last_elements_relabel[0] if index not in all_idx_view_labeled[0][-1]], [index for index in all_last_elements_relabel[1] if index not in all_idx_view_labeled[1][-1]]]
-                write_log_superclean(filtered_elements, predicted_labels, log_file= superclean_relabeled_log, threshold=threshold)
-
             start_time = time.time()
-            if args.use_loss:
+            
+            if epoch < args.epoch_relabel:
                 print('Train Net1')
-                labeled_trainloader, unlabeled_trainloader, _ = loader.run('train',pred_loss2,prob_loss2) # co-divide
-                loss_train[0], loss_train_x[0], loss_train_u[0] = train(epoch,net1,net2,optimizer1,labeled_trainloader, unlabeled_trainloader, loss_train[0], loss_train_x[0], loss_train_u[0], savelog=True) # train net1  
-                
+                labeled_trainloader, unlabeled_trainloader, _ = loader.run('train',pred_loss2,prob_loss2, second_ind=second_ind) # co-divide
+                loss_train[0], loss_train_x[0], loss_train_u[0], train_loss_contrastive[0] = train(epoch,net1,net2,optimizer1,labeled_trainloader, unlabeled_trainloader, loss_train[0], loss_train_x[0], loss_train_u[0], train_loss_contrastive[0], op2['op'], savelog=True) # train net1  
+                        
                 print('\nTrain Net2')
-                labeled_trainloader, unlabeled_trainloader, u_map_trainloader = loader.run('train',pred_loss1,prob_loss1) # co-divide
-                loss_train[1], loss_train_x[1], loss_train_u[1] = train(epoch,net2,net1,optimizer2,labeled_trainloader, unlabeled_trainloader, loss_train[1], loss_train_x[1], loss_train_u[1], savelog=False) # train net2         
+                labeled_trainloader, unlabeled_trainloader, u_map_trainloader = loader.run('train',pred_loss1,prob_loss1, second_ind=second_ind) # co-divide
+                loss_train[1], loss_train_x[1], loss_train_u[1], train_loss_contrastive[1] = train(epoch,net2,net1,optimizer2,labeled_trainloader, unlabeled_trainloader, loss_train[1], loss_train_x[1], loss_train_u[1], train_loss_contrastive[1], op1['op'], savelog=False) # train net2         
             else:
                 print('Train Net1')
-                labeled_trainloader, unlabeled_trainloader, _ = loader.run('train',pred2, prob1) # co-divide
+                labeled_trainloader, unlabeled_trainloader, _ = loader.run('train',pred_loss2,prob_loss2, relabel_inds = relabel_idx_2, new_labels= new_labels_2) # co-divide
                 loss_train[0], loss_train_x[0], loss_train_u[0] = train(epoch,net1,net2,optimizer1,labeled_trainloader, unlabeled_trainloader, loss_train[0], loss_train_x[0], loss_train_u[0], savelog=True) # train net1  
-                
+                        
                 print('\nTrain Net2')
-                labeled_trainloader, unlabeled_trainloader, u_map_trainloader = loader.run('train',pred_margin1,prob_margin1) # co-divide
-                loss_train[1], loss_train_x[1], loss_train_u[1] = train(epoch,net2,net1,optimizer2,labeled_trainloader, unlabeled_trainloader, loss_train[1], loss_train_x[1], loss_train_u[1], savelog=False) # train net2                    
-            
+                labeled_trainloader, unlabeled_trainloader, u_map_trainloader = loader.run('train',pred_loss1,prob_loss1, relabel_inds = relabel_idx_1, new_labels= new_labels_1) # co-divide
+                loss_train[1], loss_train_x[1], loss_train_u[1] = train(epoch,net2,net1,optimizer2,labeled_trainloader, unlabeled_trainloader, loss_train[1], loss_train_x[1], loss_train_u[1], savelog=False) # train net2         
+
+
+            if args.plr_loss:
+                all_indices_x = torch.tensor(pred_loss2.nonzero()[0])
+                clean_labels_x = Contrastive_loss.noise_correction(op2['pt'][all_indices_x, :],
+                                                                op2['op'][all_indices_x, :],
+                                                                op2['pl'][all_indices_x],
+                                                                all_indices_x, device)
+                all_indices_u = torch.tensor((1 - pred_loss2).nonzero()[0])
+                clean_labels_u = Contrastive_loss.noise_correction(op2['pt'][all_indices_u, :],
+                                                                op2['op'][all_indices_u, :],
+                                                                op2['pl'][all_indices_u],
+                                                                all_indices_u, device)
+                # update class prototypes
+                features = op2['ft'].to(device)
+                labels = op2['pl'].to(device)
+                labels[all_indices_x] = clean_labels_x
+                labels[all_indices_u] = clean_labels_u
+                net1.update_prototypes(features, labels)
+
+                all_indices_x = torch.tensor(pred_loss1.nonzero()[0])
+                clean_labels_x = Contrastive_loss.noise_correction(op1['pt'][all_indices_x, :],
+                                                                op1['op'][all_indices_x, :],
+                                                                op1['pl'][all_indices_x],
+                                                                all_indices_x, device)
+                all_indices_u = torch.tensor((1 - pred_loss1).nonzero()[0])
+                clean_labels_u = Contrastive_loss.noise_correction(op1['pt'][all_indices_u, :],
+                                                                op1['op'][all_indices_u, :],
+                                                                op1['pl'][all_indices_u],
+                                                                all_indices_u, device)
+                # update class prototypes
+                features = op1['ft'].to(device)
+                labels = op1['pl'].to(device)
+                labels[all_indices_x] = clean_labels_x
+                labels[all_indices_u] = clean_labels_u
+                net1.update_prototypes(features, labels)
+
+
             end_time = round(time.time() - start_time)
             total_time+= end_time
 
         test_acc_hist, test_losses_hist = test(epoch,net1,net2, test_acc_hist, test_losses_hist)
-        if (epoch == warm_up -1) or (epoch%5==0 and epoch !=0):
+        if (epoch%5==0 and epoch !=0):
             plot_hist_curve_loss_test(data_hist= test_losses_hist, path=path_plot, epoch=epoch )
             if epoch>=warm_up:
-                plot_curve_loss_train(data_hist=[loss_train[0], loss_train_x[0], loss_train_u[0]], path=path_plot)
+                plot_curve_loss_train(data_hist=[loss_train[0], loss_train_x[0], loss_train_u[0], train_loss_contrastive[0]], path=path_plot)
 
-        if (epoch == warm_up -1) or (epoch%5==0 and epoch !=0):
-                if args.use_loss:
-                    print("Plots...")
-                    plot_curve_loss(data_hist= eval_loss_hist[0], inds_clean=inds_clean, inds_noisy=inds_noisy, path=path_plot, epoch=epoch )
-                    plot_curve_accuracy(data_hist= eval_acc_hist[0], inds_clean=inds_clean, inds_noisy=inds_noisy, path=path_plot, epoch=epoch )
-                    plot_histogram_metric(data_hist=all_loss[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = indices_values, path=path_plot, epoch=epoch, metric = "Loss"  )
-                    if args.uncertainty:
-                        plot_histogram_metric(data_hist=all_margin_true_label[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled_margin[0][-1], thresholds = indices_values_margin, path=path_plot, epoch=epoch, metric = "Margins_true"  )
-                        plot_histogram_metric2(data_hist=all_evidences[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = [], path=path_plot,  epoch=epoch, metric = "evidence"  )
-                        plot_histogram_metric2(data_hist=all_margins_labels[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = [], path=path_plot, epoch=epoch, metric = "Margins"  )
-                    print("Plots finished")
-                else:
-                    print("Plots...")
-                    plot_curve_loss(data_hist= eval_loss_hist[0], inds_clean=inds_clean, inds_noisy=inds_noisy, path=path_plot, epoch=epoch )
-                    plot_curve_accuracy(data_hist= eval_acc_hist[0], inds_clean=inds_clean, inds_noisy=inds_noisy, path=path_plot, epoch=epoch )
-                    plot_histogram_metric(data_hist=all_loss[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = indices_values, path=path_plot, epoch=epoch, metric = "Loss"  )
-                    if args.uncertainty:
-                        plot_histogram_metric(data_hist=all_margin_true_label[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled_margin[0][-1], thresholds = indices_values_margin, path=path_plot, epoch=epoch, metric = "Margins_true"  )
-                        plot_histogram_metric2(data_hist=all_evidences[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled_margin[0][-1], thresholds = [], path=path_plot,  epoch=epoch, metric = "evidence"  )
-                        plot_histogram_metric2(data_hist=all_margins_labels[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled_margin[0][-1], thresholds = [], path=path_plot, epoch=epoch, metric = "Margins"  )
-                    print("Plots finished")
-        
+            print("Plots...")
+            plot_curve_loss(data_hist= eval_loss_hist[0], inds_clean=inds_clean, inds_noisy=inds_noisy, path=path_plot, epoch=epoch )
+            plot_curve_accuracy(data_hist= eval_acc_hist[0], inds_clean=inds_clean, inds_noisy=inds_noisy, path=path_plot, epoch=epoch )
+            plot_histogram_metric(data_hist=all_loss[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_relabeled = relabel_idx_1, thresholds = threshold_loss_1, path=path_plot, epoch=epoch, metric = "Loss"  )
+            if args.uncertainty:
+                    mean_uncertainty = ( (1 - np.array(all_margins_labels[0][-1])) + np.array(all_vacuity[0][-1]) 
+                        + np.array(all_entropy[0][-1]) + np.array(all_dissonance[0][-1]) ) / 4
+                    plot_histogram_metric2(data_hist=mean_uncertainty, inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Mean_uncertainty"  )
+                    plot_histogram_metric2(data_hist=all_margins_labels[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Margins"  )
+                    plot_histogram_metric2(data_hist=all_vacuity[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Vacuity"  )
+                    plot_histogram_metric2(data_hist=all_entropy[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Entropy"  )
+                    plot_histogram_metric2(data_hist=all_dissonance[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Dissonance"  )
+                    plot_histogram_metric2(data_hist=all_uncertainty_class[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "uncert_class"  )
+            print("Plots finished")
+
         save_models(path_exp)
         
 
-    #test_log.write('\nBest:%.2f  avgLast10: %.2f\n'%(max(test_acc_hist),sum(test_acc_hist[-10:])/10.0))
+    test_log.write('\nBest:%.2f  avgLast10: %.2f\n'%(max(test_acc_hist),sum(test_acc_hist[-10:])/10.0))
+    test_log.close() 
     test_log.close() 
 
     time_log.write('SSL Time: %f \n'%(total_time-warmup_time))
@@ -1506,97 +1289,12 @@ for args in a:
     time_log.close()
 
     superclean_log.close()
-    superclean_relabeled_log.close()
+    filtered_superclean_log.close()
     relabeled_log.close()
-    extra_log.close()
-    superclean_extra_log.close()
-
-    #check hist of predclean net 1
-
-    relabeled_log2= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_relabeled_2.txt','w')
-    all = [[], []]
-    all_lab_idx = [[], []]
-    all_unlab_idx = [[], []]
-
-
-    for epoch_count in range(1, 171):
-        epoch = 200 - epoch_count
-        idx = all_idx_view_labeled[0][-epoch_count] 
-        margins_labeled1 = all_margins_labels[0][-epoch_count][idx]
-
-        idx = all_idx_view_unlabeled[0][-epoch_count] 
-        margins_unlabeled1 = all_margins_labels[0][-epoch_count][idx]
-
-        idx = all_idx_view_labeled[1][-epoch_count] 
-        margins_labeled2 = all_margins_labels[1][-epoch_count][idx]
-
-        idx = all_idx_view_unlabeled[1][-epoch_count] 
-        margins_unlabeled2 = all_margins_labels[1][-epoch_count][idx]
-
-        # Fixed string formatting issues
-        relabeled_log2.write(f'epoch count -: \n{epoch_count}\n')
-        relabeled_log2.write(f'mean margins labeled : \n{margins_labeled1.mean()}\n')
-        relabeled_log2.write(f'mean margins unlabeled : \n{margins_unlabeled1.mean()}\n')
-
-        predicted_labels1 = hist_preds[0][-epoch_count]
-        predicted_labels2 = hist_preds[1][-epoch_count]
-        predicted_labels = (predicted_labels1+predicted_labels2).argmax(dim=1)
-        predicted_labels1 = predicted_labels1.argmax(dim=1)
-        predicted_labels2 = predicted_labels2.argmax(dim=1)
-
-        diff_indices = np.where(predicted_labels1 != predicted_labels2)[0]
-
-        _, _, _, indices, _ = get_superclean_relabeled(
-            all_margins_labels[0][-epoch_count], 
-            all_margins_labels[1][-epoch_count], 
-            all, all_lab_idx, all_unlab_idx, 
-            threshold=margins_labeled1.mean()
-        )
-
-        filtered_elements = [
-            list(set(indices[0][-1]) - (set(all_idx_view_labeled[0][-epoch_count]) - set(diff_indices))),
-            list(set(indices[1][-1]) - (set(all_idx_view_labeled[1][-epoch_count]) - set(diff_indices)))
-        ]
-
-
-        write_log_superclean2(filtered_elements, predicted_labels1, predicted_labels2, log_file=relabeled_log2)
-        _, _, _, indices, _ = get_superclean_relabeled(
-            (all_margins_labels[0][-epoch_count]+all_margins_labels[1][-epoch_count])/2, 
-            (all_margins_labels[0][-epoch_count]+all_margins_labels[1][-epoch_count])/2, 
-            all, all_lab_idx, all_unlab_idx, 
-            threshold=margins_labeled1.mean()
-        )
-        filtered_elements = [
-            list(set(indices[0][-1]) - (set(all_idx_view_labeled[0][-epoch_count]) - set(diff_indices))),
-            list(set(indices[0][-1]) - (set(all_idx_view_labeled[1][-epoch_count]) - set(diff_indices)))
-        ]
-        write_log_superclean(filtered_elements, predicted_labels, log_file = relabeled_log2)
-    relabeled_log2.close()
 
 
 
 
-    log_intersection= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean_intersection.txt','w')
-
-    for epoch_count in range(1, 171):
-        epoch = 200 - epoch_count
-        loss_superclean1 = all_superclean[0][-epoch_count] 
-        loss_superclean2 = all_superclean[1][-epoch_count]
-        margin_superclean1 = all_superclean_margin[0][-epoch_count] 
-        margin_superclean2 = all_superclean_margin[1][-epoch_count] 
-
-        loss_intersection = list(set(loss_superclean1) & set(loss_superclean2))
-        margin_intersection = list(set(margin_superclean1) & set(margin_superclean2))
-
-        predicted_labels1 = hist_preds[0][-epoch_count]
-        predicted_labels2 = hist_preds[1][-epoch_count]
-        predicted_labels = (predicted_labels1+predicted_labels2).argmax(dim=1)
-
-        filtered_elements = [loss_intersection, margin_intersection]
-
-        write_log_superclean(filtered_elements, predicted_labels, log_file=log_intersection)
-
-    log_intersection.close()
 
 
 

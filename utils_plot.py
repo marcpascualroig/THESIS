@@ -72,11 +72,13 @@ def plot_curve_loss_train(data_hist, path):
     all_loss_per_epoch = torch.tensor(data_hist[0]) if isinstance(data_hist[0], list) else data_hist[0]
     clean_loss_per_epoch = torch.tensor(data_hist[1]) if isinstance(data_hist[1], list) else data_hist[1]
     noisy_loss_per_epoch = torch.tensor(data_hist[2]) if isinstance(data_hist[2], list) else data_hist[2]
+    contrastive_loss_per_epoch = torch.tensor(data_hist[3]) if isinstance(data_hist[3], list) else data_hist[3]
 
     # Convert to NumPy arrays, moving to CPU first if needed
     all_loss_per_epoch = all_loss_per_epoch.cpu().numpy() if isinstance(all_loss_per_epoch, torch.Tensor) else np.array(all_loss_per_epoch)
     clean_loss_per_epoch = clean_loss_per_epoch.cpu().numpy() if isinstance(clean_loss_per_epoch, torch.Tensor) else np.array(clean_loss_per_epoch)
     noisy_loss_per_epoch = noisy_loss_per_epoch.cpu().numpy() if isinstance(noisy_loss_per_epoch, torch.Tensor) else np.array(noisy_loss_per_epoch)
+    contrastive_loss_per_epoch = contrastive_loss_per_epoch.cpu().numpy() if isinstance(contrastive_loss_per_epoch, torch.Tensor) else np.array(contrastive_loss_per_epoch)
 
     # Ensure the data is correctly plotted, with length determined by the losses
     num_epochs = len(all_loss_per_epoch)  # Assuming all losses have the same length
@@ -95,6 +97,25 @@ def plot_curve_loss_train(data_hist, path):
 
     # Save the plot to the specified path
     plt.savefig(f'{path}/SSLoss_curve.png')
+    plt.clf()  # Clear the figure to avoid overlapping with other plots
+
+    
+    
+    
+    # Create the plot
+    plt.figure(figsize=(10, 5))
+    plt.plot(range(1, num_epochs + 1), clean_loss_per_epoch, linestyle='--', color='red', label='Clean Loss')
+    plt.plot(range(1, num_epochs + 1), noisy_loss_per_epoch, linestyle='-.', color='blue', label='Noisy Loss')
+    plt.plot(range(1, num_epochs + 1), contrastive_loss_per_epoch, linestyle='--', color='green', label='Contrastive Loss')
+
+    # Adding labels and title
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Loss Across Epochs')
+    plt.legend()
+
+    # Save the plot to the specified path
+    plt.savefig(f'{path}/SSandContrastiveLoss_curve.png')
     plt.clf()  # Clear the figure to avoid overlapping with other plots
 
 
@@ -244,7 +265,6 @@ def plot_histogram_metric2(data_hist, inds_clean, inds_correct, inds_labeled, in
     total_samples = len(data)
 
     loss = data_hist_2[-1].numpy()
-    evidence = data_hist_3[-1].numpy()
     margins = data_hist_4[-1].numpy()
 
     # Create metric-specific folder
@@ -256,83 +276,25 @@ def plot_histogram_metric2(data_hist, inds_clean, inds_correct, inds_labeled, in
     inds_error = list(set(range(total_samples)) - set(inds_correct))
     inds_noisy = list(set(range(total_samples)) - set(inds_clean))
     inds_unlabeled = list(set(range(total_samples)) - set(inds_labeled))
-    inds_diff = list(set(range(total_samples)) - set(inds_equal))
 
     bins = compute_histogram_bins(data, 0.01)
-    # Filter only labeled indices
-    inds_clean_labeled = list(set(inds_clean) & set(inds_labeled))
-    inds_noisy_labeled = list(set(inds_noisy) & set(inds_labeled))
 
-    num_inds_clean_labeled = len(inds_clean_labeled)
-    num_inds_noisy_labeled = len(inds_noisy_labeled)
-    perc_clean_labeled = 100 * num_inds_clean_labeled / float(num_inds_clean_labeled + num_inds_noisy_labeled)
 
-    # Plot histogram for labeled clean vs. error
-    plt.hist(data[inds_clean_labeled], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
-            label=f'clean - {num_inds_clean_labeled} ({perc_clean_labeled:.1f}%)')
-    if len(inds_noisy_labeled) > 0:
-        plt.hist(data[inds_noisy_labeled], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
-                label=f'Noisy - {num_inds_noisy_labeled} ({100 - perc_clean_labeled:.1f}%)')
+    # Plot histogram for labeled clean vs. noisy
+    plt.hist(data[inds_clean], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
+            label=f'clean - {len(inds_clean)}')
+    if len(inds_noisy) > 0:
+        plt.hist(data[inds_noisy], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
+                label=f'Noisy - {len(inds_noisy)}')
 
     plt.xlabel(metric)
     plt.ylabel('Number of Data')
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', ncol=2, mode="expand", borderaxespad=0.)
-    plt.savefig(f'{metric_path}/{metric}_clean_labeled_epoch{epoch:03d}.png')
-    plt.clf()
-
- 
-    #  Plot whole histogram
-    plt.hist(data[inds_labeled], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
-            label=f'all labeled')
-    for v in thresholds:
-        plt.axvline(x=v, color='red', linestyle='dashed', linewidth=2)
-    plt.xlabel(metric)
-    plt.ylabel('Number of Data')
-    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', ncol=2, mode="expand", borderaxespad=0.)
-    plt.savefig(f'{metric_path}/{metric}_all_labeled_epoch{epoch:03d}.png')
+    plt.savefig(f'{metric_path}/{metric}_clean_noisy_epoch{epoch:03d}.png')
     plt.clf()
 
 
-    
-    # Filter only unlabeled indices
-    inds_correct_unlabeled = list(set(inds_correct) & set(inds_unlabeled))
-    inds_error_unlabeled = list(set(inds_error) & set(inds_unlabeled))
-
-    num_inds_correct_unlabeled = len(inds_correct_unlabeled)
-    num_inds_error_unlabeled = len(inds_error_unlabeled)
-    perc_correct_unlabeled = 100 * num_inds_correct_unlabeled / float(num_inds_correct_unlabeled + num_inds_error_unlabeled)
-
-    # Plot histogram for unlabeled correct vs. error
-    plt.hist(data[inds_correct_unlabeled], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
-            label=f'correct - {num_inds_correct_unlabeled} ({perc_correct_unlabeled:.1f}%)')
-
-    if len(inds_error_unlabeled) > 0:
-        plt.hist(data[inds_error_unlabeled], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
-                label=f'error - {num_inds_error_unlabeled} ({100 - perc_correct_unlabeled:.1f}%)')
-    for v in thresholds:
-        plt.axvline(x=v, color='red', linestyle='dashed', linewidth=2)
-    plt.xlabel(metric)
-    plt.ylabel('Number of Data')
-    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', ncol=2, mode="expand", borderaxespad=0.)
-    plt.savefig(f'{metric_path}/{metric}_correct_unlabeled_epoch{epoch:03d}.png')
-    plt.clf()
-
-    
-    
-    # Plot whole histogram
-    plt.hist(data[inds_unlabeled], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
-            label=f'all unlabeled')
-    for v in thresholds:
-        plt.axvline(x=v, color='red', linestyle='dashed', linewidth=2)
-    plt.xlabel(metric)
-    plt.ylabel('Number of Data')
-    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', ncol=2, mode="expand", borderaxespad=0.)
-    plt.savefig(f'{metric_path}/{metric}_all_unlabeled_epoch{epoch:03d}.png')
-    plt.clf()
-
-
-    
-    # Plot histogram for  correct vs. error
+    # Plot histogram for correct vs. error
     plt.hist(data[inds_correct], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
             label=f'correct - {len(inds_correct)} ')
 
@@ -344,23 +306,10 @@ def plot_histogram_metric2(data_hist, inds_clean, inds_correct, inds_labeled, in
     plt.xlabel(metric)
     plt.ylabel('Number of Data')
     plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', ncol=2, mode="expand", borderaxespad=0.)
-    plt.savefig(f'{metric_path}/{metric}_all_correct_error_epoch{epoch:03d}.png')
+    plt.savefig(f'{metric_path}/{metric}_correct_error_epoch{epoch:03d}.png')
     plt.clf()
 
-    # Plot histogram for unlabeled correct vs. error
-    plt.hist(data[inds_clean], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
-            label=f'clean - {len(inds_clean)} ')
-    if len(inds_noisy) > 0:
-        plt.hist(data[inds_noisy], bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5,
-                label=f'error - {len(inds_noisy)}')
-    for v in thresholds:
-        plt.axvline(x=v, color='red', linestyle='dashed', linewidth=2)
-    plt.xlabel(metric)
-    plt.ylabel('Number of Data')
-    plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', ncol=2, mode="expand", borderaxespad=0.)
-    plt.savefig(f'{metric_path}/{metric}_all_clean_noisy_epoch{epoch:03d}.png')
-    plt.clf()
-
+    
 
 
 
@@ -378,7 +327,7 @@ def plot_histogram_metric2(data_hist, inds_clean, inds_correct, inds_labeled, in
     plt.clf()
     
     # Scatter plot for data vs. loss
-    plt.scatter(loss[inds_correct], data[inds_correct], color='blue', alpha=0.5, s=10, label=f'correcr - {len(inds_correct)}')
+    plt.scatter(loss[inds_correct], data[inds_correct], color='blue', alpha=0.5, s=10, label=f'correct - {len(inds_correct)}')
     if len(inds_error) > 0:
         plt.scatter(loss[inds_error], data[inds_error], color='red', alpha=0.5,s=10, label=f'error - {len(inds_error)}')
     # Labels and legend
@@ -388,38 +337,6 @@ def plot_histogram_metric2(data_hist, inds_clean, inds_correct, inds_labeled, in
     plt.grid(True)
     # Save figure
     plt.savefig(f'{metric_path}/{metric}_loss_scatter_correct_error_epoch{epoch:03d}.png')
-    plt.clf()
-
-
-    # Scatter plot for data vs. evidence
-    plt.scatter(evidence[inds_clean], data[inds_clean], color='blue', alpha=0.5, s=10, label=f'clean - {len(inds_clean)}')
-    if len(inds_noisy) > 0:
-
-        plt.scatter(evidence[inds_noisy], data[inds_noisy], color='red', alpha=0.5, s=10, label=f'noisy - {len(inds_noisy)}')
-    # Labels and legend
-    plt.xlabel('evidence')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_evidence_scatter_clean_noisy_epoch{epoch:03d}.png')
-    plt.clf()
-    
-    
-    # Scatter plot for data vs. evidence
-
-    plt.scatter(evidence[inds_correct], data[inds_correct], color='blue', alpha=0.5, s=10, label=f'correcr - {len(inds_correct)}')
-    if len(inds_error) > 0:
-        plt.scatter(evidence[inds_error], data[inds_error], color='red', alpha=0.5,s=10, label=f'error - {len(inds_error)}')
-    # Labels and legend
-    plt.xlabel('evidence')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(True)
-    # Display correlation on the plot
-
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_evidence_scatter_correct_error_epoch{epoch:03d}.png')
     plt.clf()
 
 
@@ -494,191 +411,4 @@ def plot_histogram_metric2(data_hist, inds_clean, inds_correct, inds_labeled, in
     plt.clf()
 
     
-    
-    
-    
-    # Scatter plot for data vs. loss
-    plt.scatter(loss[inds_equal], data[inds_equal], color='blue', alpha=0.5, s=10, label=f'equal - {len(inds_equal)}')
-    if len(inds_diff) > 0:
-        plt.scatter(loss[inds_diff], data[inds_diff], color='red', alpha=0.5, s=10, label=f'diff - {len(inds_diff)}')
-    # Labels and legend
-    plt.xlabel('Loss')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_equal_diff_epoch{epoch:03d}.png')
-    plt.clf()
 
-
-def plot_histogram_metric2222(data_hist, inds_clean, inds_correct, inds_labeled, thresholds, path, epoch, data_hist_2, data_hist_3, data_hist_4, metric="True_margin"):
-    if metric != "Mean_uncertainty":
-        data = data_hist[-1].numpy()
-    else:
-        data = data_hist
-
-    total_samples = len(data)
-    margins = data_hist_4[-1].numpy()
-
-    # Create metric-specific folder
-    metric_path = os.path.join(path, metric)
-    os.makedirs(metric_path, exist_ok=True)
-    if isinstance(inds_labeled, torch.Tensor):
-        inds_labeled = inds_labeled.numpy()
-
-    inds_error = list(set(range(total_samples)) - set(inds_correct))
-    inds_noisy = list(set(range(total_samples)) - set(inds_clean))
-    inds_unlabeled = list(set(range(total_samples)) - set(inds_labeled))
-
-    bins = compute_histogram_bins(data, 0.01)
-    # Filter only labeled indices
-    inds_clean_labeled = list(set(inds_clean) & set(inds_labeled))
-    inds_noisy_labeled = list(set(inds_noisy) & set(inds_labeled))
-
-    num_inds_clean_labeled = len(inds_clean_labeled)
-    num_inds_noisy_labeled = len(inds_noisy_labeled)
-    perc_clean_labeled = 100 * num_inds_clean_labeled / float(num_inds_clean_labeled + num_inds_noisy_labeled)
-
-
-    # Filter only unlabeled indices
-    inds_correct_unlabeled = list(set(inds_correct) & set(inds_unlabeled))
-    inds_error_unlabeled = list(set(inds_error) & set(inds_unlabeled))
-
-    num_inds_correct_unlabeled = len(inds_correct_unlabeled)
-    num_inds_error_unlabeled = len(inds_error_unlabeled)
-    perc_correct_unlabeled = 100 * num_inds_correct_unlabeled / float(num_inds_correct_unlabeled + num_inds_error_unlabeled)
-
-
-
-    # Scatter plot for data vs. margins
-    num_clean_margins_gt_0 = np.sum(margins[inds_clean] > 0)
-    num_noisy_margins_gt_0 = np.sum(margins[inds_noisy] > 0) if len(inds_noisy) > 0 else 0
-    plt.scatter(margins[inds_clean], data[inds_clean], color='blue', alpha=0.5, s=10, label=f'clean - {len(inds_clean)}')
-    if len(inds_noisy) > 0:
-        plt.scatter(margins[inds_noisy], data[inds_noisy], color='red', alpha=0.5, s=10, label=f'noisy - {len(inds_noisy)}')
-    # Labels and legend
-    plt.xlabel('margins')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.text(0.05, 0.95, f'Clean (margins > 0): {num_clean_margins_gt_0}', 
-         transform=plt.gca().transAxes, fontsize=10, color='blue')
-    if len(inds_noisy) > 0:
-        plt.text(0.05, 0.90, f'Noisy (margins > 0): {num_noisy_margins_gt_0}', 
-                transform=plt.gca().transAxes, fontsize=10, color='red')
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_clean_noisy_epoch{epoch:03d}.png')
-    plt.clf()
-
-    # Scatter plot for data vs. margins
-    plt.scatter(margins[inds_clean], data[inds_clean], color='blue', alpha=0.5, s=10, label=f'clean - {len(inds_clean)}')
-    # Labels and legend
-    plt.xlabel('margins')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_clean_epoch{epoch:03d}.png')
-    plt.clf()
-    
-    # Scatter plot for data vs. margins
-    if len(inds_noisy) > 0:
-        plt.scatter(margins[inds_noisy], data[inds_noisy], color='red', alpha=0.5, s=10, label=f'noisy - {len(inds_noisy)}')
-    # Labels and legend
-    plt.xlabel('margins')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_noisy_epoch{epoch:03d}.png')
-    plt.clf()
-
-
-
-
-
-
-    # Scatter plot for data vs. margins
-    num_correct_margins_gt_0 = np.sum(margins[inds_correct] > 0)
-    num_error_margins_gt_0 = np.sum(margins[inds_error] > 0) if len(inds_error) > 0 else 0
-    plt.scatter(margins[inds_correct], data[inds_correct], color='blue', alpha=0.5, s=10, label=f'correcr - {len(inds_correct)}')
-    if len(inds_error) > 0:
-        plt.scatter(margins[inds_error], data[inds_error], color='red', alpha=0.5,s=10, label=f'error - {len(inds_error)}')
-    # Labels and legend
-    plt.xlabel('margins')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.text(0.05, 0.95, f'Correct (margins > 0): {num_correct_margins_gt_0}', 
-         transform=plt.gca().transAxes, fontsize=10, color='blue')
-    if len(inds_noisy) > 0:
-        plt.text(0.05, 0.90, f'Error (margins > 0): {num_error_margins_gt_0}', 
-                transform=plt.gca().transAxes, fontsize=10, color='red')
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_correct_error_epoch{epoch:03d}.png')
-    plt.clf()
-
-    # Scatter plot for data vs. margins
-    plt.scatter(margins[inds_correct], data[inds_correct], color='blue', alpha=0.5, s=10, label=f'correcr - {len(inds_correct)}')
-    # Labels and legend
-    plt.xlabel('margins')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_correct_epoch{epoch:03d}.png')
-    plt.clf()
-
-    # Scatter plot for data vs. margins
-    if len(inds_error) > 0:
-        plt.scatter(margins[inds_error], data[inds_error], color='red', alpha=0.5,s=10, label=f'error - {len(inds_error)}')
-    # Labels and legend
-    plt.xlabel('margins')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_error_epoch{epoch:03d}.png')
-    plt.clf()
-
-
-    # Scatter plot for data vs. margins
-    plt.scatter(margins[inds_clean], data[inds_clean], color='blue', alpha=0.5, s=10, label=f'clean - {len(inds_clean)}')
-    if len(inds_noisy) > 0:
-        plt.scatter(margins[inds_noisy], data[inds_noisy], color='red', alpha=0.5, s=10, label=f'noisy - {len(inds_noisy)}')
-    # Labels and legend
-    plt.xlabel('margins')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.text(0.05, 0.95, f'Clean (margins > 0): {num_clean_margins_gt_0}', 
-         transform=plt.gca().transAxes, fontsize=10, color='blue')
-    if len(inds_noisy) > 0:
-        plt.text(0.05, 0.90, f'Noisy (margins > 0): {num_noisy_margins_gt_0}', 
-                transform=plt.gca().transAxes, fontsize=10, color='red')
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_clean_noisy_epoch{epoch:03d}.png')
-    plt.clf()
-
-    # Scatter plot for data vs. margins
-    plt.scatter(margins[inds_clean], data[inds_clean], color='blue', alpha=0.5, s=10, label=f'clean - {len(inds_clean)}')
-    # Labels and legend
-    plt.xlabel('margins')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_clean_epoch{epoch:03d}.png')
-    plt.clf()
-    
-    # Scatter plot for data vs. margins
-    if len(inds_noisy) > 0:
-        plt.scatter(margins[inds_noisy], data[inds_noisy], color='red', alpha=0.5, s=10, label=f'noisy - {len(inds_noisy)}')
-    # Labels and legend
-    plt.xlabel('margins')
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(True)
-    # Save figure
-    plt.savefig(f'{metric_path}/{metric}_margins_scatter_noisy_epoch{epoch:03d}.png')
-    plt.clf()

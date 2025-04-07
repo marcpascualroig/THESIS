@@ -16,6 +16,8 @@ def compute_dirichlet_metrics(outputs, num_class, activation, evidence_factor=1)
     # Compute belief mass
     belief_mass = alpha / alpha_0  # b_i = alpha_i / sum(alpha)
 
+    uncertainty_class = num_class / alpha_0
+
     # Compute entropy of belief mass
     entropy = -torch.sum(
         belief_mass * (torch.digamma(alpha + 1) - torch.digamma(alpha_0 + 1)),
@@ -36,7 +38,7 @@ def compute_dirichlet_metrics(outputs, num_class, activation, evidence_factor=1)
     top2_vals, _ = torch.topk(outputs, k=2, dim=1)
     margin = top2_vals[:, 0] - top2_vals[:, 1]
 
-    return vacuity.squeeze(1), entropy, dissonance, margin, top2_vals[:, 0]
+    return vacuity.squeeze(1), entropy, dissonance, margin, top2_vals[:, 0], uncertainty_class
 
 
 def get_device():
@@ -60,6 +62,7 @@ def softplus_evidence(y):
 def kl_divergence(alpha, num_classes, device=None):
     if not device:
         device = get_device()
+    num_classes = alpha.size(-1)
     ones = torch.ones([1, num_classes], dtype=torch.float32, device=device)
     sum_alpha = torch.sum(alpha, dim=1, keepdim=True)
     first_term = (
@@ -124,10 +127,13 @@ def edl_loss(func, y, alpha, epoch_num, num_classes, annealing_step, evidence_fa
     else:
         annealing_coef = annealing_step
 
+    #L_variance = torch.sum(alpha * (S - alpha) / (S * S * (S + 1)), dim=1, keepdim=True)
+    L_variance = 0
+
     kl_alpha = (alpha - evidence_factor) * (1 - y) + 1
     kl_div = annealing_coef * kl_divergence(kl_alpha, num_classes, device=device)
 
-    return A + kl_div
+    return A + L_variance + kl_div
 
 
 
@@ -154,6 +160,30 @@ def edl_log_loss(output, target, epoch_num, num_classes, annealing_step, activat
         )
 
     return torch.mean(loss), loss.squeeze(-1)
+
+def m_edl_log_loss(output, target, epoch_num, num_classes, annealing_step, activation=softplus_evidence, evidence_factor=1, device=None):
+    if not device:
+        device = get_device()
+    
+    target = target.to(device)  # ✅ Ensure target is on the right device
+    
+    evidence = activation(output)  # Convert output into evidence
+    alpha = evidence + evidence_factor  # Compute Dirichlet parameters
+    alpha_e = alpha[:, :num_classes]  # Extract the first `num_classes` columns
+    alpha_u = torch.full((alpha.shape[0], 1), 10 + evidence_factor, dtype=torch.float32, device=device)
+    alpha_p = torch.cat([alpha_e, alpha_u], dim=1)
+
+    if target.shape[1] == alpha_p.shape[1]:
+        target_p = target  # Use target as-is
+    else:
+        batch_size = target.shape[0]
+        target_u = torch.zeros((batch_size, 1), dtype=torch.float32, device=device)
+        target_p = torch.cat([target, target_u], dim=1)
+
+    loss = edl_loss(torch.log, target_p, alpha_p, epoch_num, num_classes, annealing_step, evidence_factor, device)
+
+    return torch.mean(loss), loss.squeeze(-1)
+
 
 
 def edl_digamma_loss(

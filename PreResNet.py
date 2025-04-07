@@ -59,31 +59,6 @@ class PreActBlock(nn.Module):
         out += shortcut
         return out
 
-class PreActBlock_2(nn.Module):
-    '''Pre-activation version of the BasicBlock with Layer Normalization.'''
-    expansion = 1
-
-    def __init__(self, in_planes, planes, stride=1):
-        super(PreActBlock, self).__init__()
-        # Replacing BatchNorm2d with LayerNorm
-        self.ln1 = nn.LayerNorm(in_planes)  # LayerNorm instead of BatchNorm
-        self.conv1 = conv3x3(in_planes, planes, stride)
-        self.ln2 = nn.LayerNorm(planes)  # LayerNorm instead of BatchNorm
-        self.conv2 = conv3x3(planes, planes)
-
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion*planes:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False)
-            )
-
-    def forward(self, x):
-        out = F.relu(self.ln1(x))  # Applying LayerNorm instead of BatchNorm
-        shortcut = self.shortcut(out)
-        out = self.conv1(out)
-        out = self.conv2(F.relu(self.ln2(out)))  # Applying LayerNorm instead of BatchNorm
-        out += shortcut
-        return out
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -142,8 +117,107 @@ class PreActBottleneck(nn.Module):
         return out
 
 
+class ResNet(nn.Module):
+    def __init__(self, block, num_blocks, num_classes=10):
+        super(ResNet, self).__init__()
+        self.in_planes = 64
+
+        self.temperature = 0.1
+        self.proto_m = 0.99
+        self.low_dim = 128
+
+        self.conv1 = conv3x3(3,64)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
+        self.linear = nn.Linear(512*block.expansion, num_classes)
+        self.projector = nn.Sequential(
+            nn.Linear(512 * block.expansion, 512 * block.expansion),
+            nn.ReLU(), nn.Linear(512 * block.expansion, self.low_dim))
+        self.register_buffer("prototypes", torch.zeros(num_classes, self.low_dim))
+
+    def _make_layer(self, block, planes, num_blocks, stride):
+        strides = [stride] + [1]*(num_blocks-1)
+        layers = []
+        for stride in strides:
+            layers.append(block(self.in_planes, planes, stride))
+            self.in_planes = planes * block.expansion
+        return nn.Sequential(*layers)
+
+    @torch.no_grad()
+    def init_prototypes(self, features, labels):
+        # features, labels are lists of tensors
+        assert set(range(len(self.prototypes))) == set(labels.cpu().numpy()), \
+            f'The missing labels are {set(range(len(self.prototypes))) - set(labels.cpu().numpy())}'
+        for i in range(self.prototypes.shape[0]):
+            self.prototypes[i] = features[labels == i].mean(dim=0)
+        self.prototypes = F.normalize(self.prototypes, p=2, dim=1)
+
+    @torch.no_grad()
+    def update_prototypes(self, features, labels):
+        avg_features = torch.zeros_like(self.prototypes).to(self.prototypes.device)
+        for i in range(avg_features.shape[0]):
+            avg_features[i] = features[labels == i].mean(dim=0)
+        avg_features = F.normalize(avg_features, p=2, dim=1)
+        for i in range(avg_features.shape[0]):
+            if not torch.isnan(avg_features[i]).any():
+                self.prototypes[i] = self.proto_m * self.prototypes[i] + (1 - self.proto_m) * avg_features[i]
+        self.prototypes = F.normalize(self.prototypes, p=2, dim=1)
+
+    def forward(self, x, forward_pass='default', sharpen=True, lin=0, lout=5):
+        out = x
+        if lin < 1 and lout > -1:
+            out = self.conv1(out)
+            out = self.bn1(out)
+            out = F.relu(out)
+        if lin < 2 and lout > 0:
+            out = self.layer1(out)
+        if lin < 3 and lout > 1:
+            out = self.layer2(out)
+        if lin < 4 and lout > 2:
+            out = self.layer3(out)
+        if lin < 5 and lout > 3:
+            out = self.layer4(out)
+        if lout > 4:
+            out = F.avg_pool2d(out, 4)
+            features = out.view(out.size(0), -1)
+            out = self.linear(features)
+            if forward_pass == 'default':
+                return out
+
+            elif forward_pass == 'backbone':
+                return features
+
+            elif forward_pass == 'cls':
+                return out
+
+            elif forward_pass == 'proj':
+                q = self.projector(features)
+                q = F.normalize(q, dim=1)
+                return q
+
+            elif forward_pass == 'cls_proj':
+                q = self.projector(features)
+                q = F.normalize(q, dim=1)
+                return out, q
+
+            elif forward_pass == 'all':
+                q = self.projector(features)
+                q = F.normalize(q, dim=1)
+                prototypes = self.prototypes.clone().detach()
+                if sharpen:
+                    logits_proto = torch.mm(q, prototypes.t()) / self.temperature
+                else:
+                    logits_proto = torch.mm(q, prototypes.t())
+                return out, logits_proto, q
+            else:
+                raise ValueError('Invalid forward pass {}'.format(forward_pass))
+
+
 def ResNet18(num_classes=10):
-    return ResNet(PreActBlock, [2, 2, 2, 2], num_classes=num_classes)
+    return ResNet(PreActBlock, [2,2,2,2], num_classes=num_classes)
 
 def ResNet34(num_classes=10):
     return ResNet(BasicBlock, [3,4,6,3], num_classes=num_classes)
@@ -162,50 +236,3 @@ def test():
     net = ResNet18()
     y = net(Variable(torch.randn(1,3,32,32)))
     print(y.size())
-
-class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10):
-        super(ResNet, self).__init__()
-        self.in_planes = 64
-
-        self.conv1 = conv3x3(3,64)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512*block.expansion, num_classes)
-        self.projection_head = nn.Linear(512 * block.expansion, 128)
-        self.bnl = nn.BatchNorm1d(128)
-
-    def _make_layer(self, block, planes, num_blocks, stride):
-        strides = [stride] + [1]*(num_blocks-1)
-        layers = []
-        for stride in strides:
-            layers.append(block(self.in_planes, planes, stride))
-            self.in_planes = planes * block.expansion
-        return nn.Sequential(*layers)
-
-    def forward(self, x, mode = "logits", lin=0, lout=5):
-        out = x
-        if lin < 1 and lout > -1:
-            out = self.conv1(out)
-            out = self.bn1(out)
-            out = F.relu(out)
-        if lin < 2 and lout > 0:
-            out = self.layer1(out)
-        if lin < 3 and lout > 1:
-            out = self.layer2(out)
-        if lin < 4 and lout > 2:
-            out = self.layer3(out)
-        if lin < 5 and lout > 3:
-            out = self.layer4(out)
-        if lout > 4:
-            out = F.avg_pool2d(out, 4)
-            out = out.view(out.size(0), -1)
-            out1 = self.bnl(self.projection_head(out))
-            out = self.linear(out)
-            if mode == "encoder":
-                return out1, out
-            else:
-                return out
