@@ -16,7 +16,7 @@ def compute_dirichlet_metrics(outputs, num_class, activation, evidence_factor=1)
     # Compute belief mass
     belief_mass = alpha / alpha_0  # b_i = alpha_i / sum(alpha)
 
-    uncertainty_class = num_class / alpha_0
+    uncertainty_class = num_class*evidence_factor / alpha_0
 
     # Compute entropy of belief mass
     entropy = -torch.sum(
@@ -38,7 +38,14 @@ def compute_dirichlet_metrics(outputs, num_class, activation, evidence_factor=1)
     top2_vals, _ = torch.topk(outputs, k=2, dim=1)
     margin = top2_vals[:, 0] - top2_vals[:, 1]
 
-    return vacuity.squeeze(1), entropy, dissonance, margin, top2_vals[:, 0], uncertainty_class
+    #mutual info
+    # Entropy of expected class probabilities (total uncertainty)
+    log_expected_probs = torch.log(belief_mass + 1e-10)
+    entropy_of_expected = -torch.sum(belief_mass * log_expected_probs, dim=1)
+    # Mutual Information = Entropy of expected - Expected entropy
+    mutual_information = entropy_of_expected - entropy
+
+    return vacuity.squeeze(1), entropy, dissonance, margin, top2_vals[:, 0], uncertainty_class, mutual_information
 
 
 def get_device():
@@ -131,6 +138,8 @@ def edl_loss(func, y, alpha, epoch_num, num_classes, annealing_step, evidence_fa
     L_variance = 0
 
     kl_alpha = (alpha - evidence_factor) * (1 - y) + 1
+    #new_alpha = one_hot_y + (1.0 - one_hot_y) * (self.num_classes / 10.) * alpha
+
     kl_div = annealing_coef * kl_divergence(kl_alpha, num_classes, device=device)
 
     return A + L_variance + kl_div

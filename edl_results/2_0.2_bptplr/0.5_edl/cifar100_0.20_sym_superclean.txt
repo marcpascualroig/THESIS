@@ -1,0 +1,1892 @@
+Epoch: 30
+Number of superclean instances: 37200
+Percentage of superclean instances: 74.40%
+Accuracy of superclean instances (clean vs noisy): 82.60%  	 98.16% 	 91.04%
+Accuracy - precision - recall (with respect to clean indices): 98.16%
+--------------------------------------------------
+Epoch: 30
+Number of superclean instances: 37200
+Percentage of superclean instances: 74.40%
+Accuracy - precision - recall (with respect to correct indices): 82.60%  	 82.60% 	 84.47%
+--------------------------------------------------
+Epoch: 31
+Number of superclean instances: 38900
+Percentage of superclean instances: 77.80%
+Accuracy of superclean instances (clean vs noisy): 79.06%  	 98.16% 	 95.20%
+Accuracy - precision - recall (with respect to clean indices): 98.16%
+--------------------------------------------------
+Epoch: 31
+Number of superclean instances: 38900
+Percentage of superclean instances: 77.80%
+Accuracy - precision - recall (with respect to correct indices): 79.06%  	 79.06% 	 83.87%
+--------------------------------------------------
+Epoch: 32
+Number of superclean instances: 38700
+Percentage of superclean instances: 77.40%
+Accuracy of superclean instances (clean vs noisy): 78.58%  	 98.26% 	 94.80%
+Accuracy - precision - recall (with respect to clean indices): 98.26%
+--------------------------------------------------
+Epoch: 32
+Number of superclean instances: 38700
+Percentage of superclean instances: 77.40%
+Accuracy - precision - recall (with respect to correct indices): 78.58%  	 78.58% 	 83.47%
+--------------------------------------------------
+Epoch: 33
+Number of superclean instances: 38600
+Percentage of superclean instances: 77.20%
+Accuracy of superclean instances (clean vs noisy): 78.17%  	 98.50% 	 94.79%
+Accuracy - precision - recall (with respect to clean indices): 98.50%
+--------------------------------------------------
+Epoch: 33
+Number of superclean instances: 38600
+Percentage of superclean instances: 77.20%
+Accuracy - precision - recall (with respect to correct indices): 78.17%  	 78.17% 	 83.14%
+--------------------------------------------------
+Epoch: 34
+Number of superclean instances: 38400
+Percentage of superclean instances: 76.80%
+Accuracy of superclean instances (clean vs noisy): 78.43%  	 98.52% 	 94.32%
+Accuracy - precision - recall (with respect to clean indices): 98.52%
+--------------------------------------------------
+Epoch: 34
+Number of superclean instances: 38400
+Percentage of superclean instances: 76.80%
+Accuracy - precision - recall (with respect to correct indices): 78.43%  	 78.43% 	 83.03%
+--------------------------------------------------
+Epoch: 35
+Number of superclean instances: 38400
+Percentage of superclean instances: 76.80%
+Accuracy of superclean instances (clean vs noisy): 78.54%  	 98.62% 	 94.42%
+Accuracy - precision - recall (with respect to clean indices): 98.62%
+--------------------------------------------------
+Epoch: 35
+Number of superclean instances: 38400
+Percentage of superclean instances: 76.80%
+Accuracy - precision - recall (with respect to correct indices): 78.54%  	 78.54% 	 83.07%
+--------------------------------------------------
+Epoch: 36
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 77.22%  	 98.60% 	 94.15%
+Accuracy - precision - recall (with respect to clean indices): 98.60%
+--------------------------------------------------
+Epoch: 36
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 77.22%  	 77.22% 	 82.84%
+--------------------------------------------------
+Epoch: 37
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 78.07%  	 98.63% 	 94.18%
+Accuracy - precision - recall (with respect to clean indices): 98.63%
+--------------------------------------------------
+Epoch: 37
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 78.07%  	 78.07% 	 82.70%
+--------------------------------------------------
+Epoch: 38
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 78.42%  	 98.75% 	 93.80%
+Accuracy - precision - recall (with respect to clean indices): 98.75%
+--------------------------------------------------
+Epoch: 38
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 78.42%  	 78.42% 	 82.58%
+--------------------------------------------------
+Epoch: 39
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy of superclean instances (clean vs noisy): 76.61%  	 98.77% 	 93.33%
+Accuracy - precision - recall (with respect to clean indices): 98.77%
+--------------------------------------------------
+Epoch: 39
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy - precision - recall (with respect to correct indices): 76.61%  	 76.61% 	 82.42%
+--------------------------------------------------
+Epoch: 40
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy of superclean instances (clean vs noisy): 77.53%  	 98.70% 	 93.51%
+Accuracy - precision - recall (with respect to clean indices): 98.70%
+--------------------------------------------------
+Epoch: 40
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy - precision - recall (with respect to correct indices): 77.53%  	 77.53% 	 82.60%
+--------------------------------------------------
+Epoch: 41
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy of superclean instances (clean vs noisy): 78.93%  	 98.81% 	 93.36%
+Accuracy - precision - recall (with respect to clean indices): 98.81%
+--------------------------------------------------
+Epoch: 41
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy - precision - recall (with respect to correct indices): 78.93%  	 78.93% 	 82.45%
+--------------------------------------------------
+Epoch: 42
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy of superclean instances (clean vs noisy): 78.35%  	 98.73% 	 93.54%
+Accuracy - precision - recall (with respect to clean indices): 98.73%
+--------------------------------------------------
+Epoch: 42
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy - precision - recall (with respect to correct indices): 78.35%  	 78.35% 	 82.50%
+--------------------------------------------------
+Epoch: 43
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy of superclean instances (clean vs noisy): 78.96%  	 98.93% 	 92.74%
+Accuracy - precision - recall (with respect to clean indices): 98.93%
+--------------------------------------------------
+Epoch: 43
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy - precision - recall (with respect to correct indices): 78.96%  	 78.96% 	 82.19%
+--------------------------------------------------
+Epoch: 44
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 78.50%  	 98.90% 	 92.95%
+Accuracy - precision - recall (with respect to clean indices): 98.90%
+--------------------------------------------------
+Epoch: 44
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 78.50%  	 78.50% 	 82.45%
+--------------------------------------------------
+Epoch: 45
+Number of superclean instances: 37500
+Percentage of superclean instances: 75.00%
+Accuracy of superclean instances (clean vs noisy): 79.47%  	 98.95% 	 92.51%
+Accuracy - precision - recall (with respect to clean indices): 98.95%
+--------------------------------------------------
+Epoch: 45
+Number of superclean instances: 37500
+Percentage of superclean instances: 75.00%
+Accuracy - precision - recall (with respect to correct indices): 79.47%  	 79.47% 	 82.17%
+--------------------------------------------------
+Epoch: 46
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy of superclean instances (clean vs noisy): 79.01%  	 98.80% 	 93.60%
+Accuracy - precision - recall (with respect to clean indices): 98.80%
+--------------------------------------------------
+Epoch: 46
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy - precision - recall (with respect to correct indices): 79.01%  	 79.01% 	 82.52%
+--------------------------------------------------
+Epoch: 47
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy of superclean instances (clean vs noisy): 78.73%  	 98.84% 	 93.40%
+Accuracy - precision - recall (with respect to clean indices): 98.84%
+--------------------------------------------------
+Epoch: 47
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy - precision - recall (with respect to correct indices): 78.73%  	 78.73% 	 82.36%
+--------------------------------------------------
+Epoch: 48
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy of superclean instances (clean vs noisy): 79.90%  	 98.93% 	 93.48%
+Accuracy - precision - recall (with respect to clean indices): 98.93%
+--------------------------------------------------
+Epoch: 48
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy - precision - recall (with respect to correct indices): 79.90%  	 79.90% 	 82.32%
+--------------------------------------------------
+Epoch: 49
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 79.81%  	 98.93% 	 92.98%
+Accuracy - precision - recall (with respect to clean indices): 98.93%
+--------------------------------------------------
+Epoch: 49
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 79.81%  	 79.81% 	 82.23%
+--------------------------------------------------
+Epoch: 50
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy of superclean instances (clean vs noisy): 79.28%  	 98.94% 	 93.24%
+Accuracy - precision - recall (with respect to clean indices): 98.94%
+--------------------------------------------------
+Epoch: 50
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy - precision - recall (with respect to correct indices): 79.28%  	 79.28% 	 82.37%
+--------------------------------------------------
+Epoch: 51
+Number of superclean instances: 37400
+Percentage of superclean instances: 74.80%
+Accuracy of superclean instances (clean vs noisy): 79.87%  	 99.12% 	 92.42%
+Accuracy - precision - recall (with respect to clean indices): 99.12%
+--------------------------------------------------
+Epoch: 51
+Number of superclean instances: 37400
+Percentage of superclean instances: 74.80%
+Accuracy - precision - recall (with respect to correct indices): 79.87%  	 79.87% 	 82.17%
+--------------------------------------------------
+Epoch: 52
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy of superclean instances (clean vs noisy): 79.90%  	 98.90% 	 93.45%
+Accuracy - precision - recall (with respect to clean indices): 98.90%
+--------------------------------------------------
+Epoch: 52
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy - precision - recall (with respect to correct indices): 79.90%  	 79.90% 	 82.28%
+--------------------------------------------------
+Epoch: 53
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 80.29%  	 98.99% 	 93.04%
+Accuracy - precision - recall (with respect to clean indices): 98.99%
+--------------------------------------------------
+Epoch: 53
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 80.29%  	 80.29% 	 82.26%
+--------------------------------------------------
+Epoch: 54
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy of superclean instances (clean vs noisy): 79.48%  	 98.97% 	 93.27%
+Accuracy - precision - recall (with respect to clean indices): 98.97%
+--------------------------------------------------
+Epoch: 54
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy - precision - recall (with respect to correct indices): 79.48%  	 79.48% 	 82.26%
+--------------------------------------------------
+Epoch: 55
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy of superclean instances (clean vs noisy): 80.38%  	 99.01% 	 92.81%
+Accuracy - precision - recall (with respect to clean indices): 99.01%
+--------------------------------------------------
+Epoch: 55
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy - precision - recall (with respect to correct indices): 80.38%  	 80.38% 	 82.29%
+--------------------------------------------------
+Epoch: 56
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 80.68%  	 99.03% 	 93.08%
+Accuracy - precision - recall (with respect to clean indices): 99.03%
+--------------------------------------------------
+Epoch: 56
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 80.68%  	 80.68% 	 82.23%
+--------------------------------------------------
+Epoch: 57
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy of superclean instances (clean vs noisy): 80.64%  	 99.04% 	 92.84%
+Accuracy - precision - recall (with respect to clean indices): 99.04%
+--------------------------------------------------
+Epoch: 57
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy - precision - recall (with respect to correct indices): 80.64%  	 80.64% 	 82.13%
+--------------------------------------------------
+Epoch: 58
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 80.95%  	 99.01% 	 93.06%
+Accuracy - precision - recall (with respect to clean indices): 99.01%
+--------------------------------------------------
+Epoch: 58
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 80.95%  	 80.95% 	 82.31%
+--------------------------------------------------
+Epoch: 59
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy of superclean instances (clean vs noisy): 80.69%  	 98.97% 	 93.52%
+Accuracy - precision - recall (with respect to clean indices): 98.97%
+--------------------------------------------------
+Epoch: 59
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy - precision - recall (with respect to correct indices): 80.69%  	 80.69% 	 82.28%
+--------------------------------------------------
+Epoch: 60
+Number of superclean instances: 37500
+Percentage of superclean instances: 75.00%
+Accuracy of superclean instances (clean vs noisy): 81.17%  	 99.12% 	 92.67%
+Accuracy - precision - recall (with respect to clean indices): 99.12%
+--------------------------------------------------
+Epoch: 60
+Number of superclean instances: 37500
+Percentage of superclean instances: 75.00%
+Accuracy - precision - recall (with respect to correct indices): 81.17%  	 81.17% 	 82.13%
+--------------------------------------------------
+Epoch: 61
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 81.93%  	 99.07% 	 93.12%
+Accuracy - precision - recall (with respect to clean indices): 99.07%
+--------------------------------------------------
+Epoch: 61
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 81.93%  	 81.93% 	 82.28%
+--------------------------------------------------
+Epoch: 62
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 81.34%  	 99.06% 	 93.11%
+Accuracy - precision - recall (with respect to clean indices): 99.06%
+--------------------------------------------------
+Epoch: 62
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 81.34%  	 81.34% 	 82.26%
+--------------------------------------------------
+Epoch: 63
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 81.61%  	 99.07% 	 93.12%
+Accuracy - precision - recall (with respect to clean indices): 99.07%
+--------------------------------------------------
+Epoch: 63
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 81.61%  	 81.61% 	 82.21%
+--------------------------------------------------
+Epoch: 64
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy of superclean instances (clean vs noisy): 81.85%  	 99.02% 	 93.57%
+Accuracy - precision - recall (with respect to clean indices): 99.02%
+--------------------------------------------------
+Epoch: 64
+Number of superclean instances: 37900
+Percentage of superclean instances: 75.80%
+Accuracy - precision - recall (with respect to correct indices): 81.85%  	 81.85% 	 82.34%
+--------------------------------------------------
+Epoch: 65
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy of superclean instances (clean vs noisy): 81.82%  	 99.06% 	 93.35%
+Accuracy - precision - recall (with respect to clean indices): 99.06%
+--------------------------------------------------
+Epoch: 65
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy - precision - recall (with respect to correct indices): 81.82%  	 81.82% 	 82.09%
+--------------------------------------------------
+Epoch: 66
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy of superclean instances (clean vs noisy): 82.19%  	 99.12% 	 92.92%
+Accuracy - precision - recall (with respect to clean indices): 99.12%
+--------------------------------------------------
+Epoch: 66
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy - precision - recall (with respect to correct indices): 82.19%  	 82.19% 	 82.14%
+--------------------------------------------------
+Epoch: 67
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy of superclean instances (clean vs noisy): 82.77%  	 99.13% 	 92.92%
+Accuracy - precision - recall (with respect to clean indices): 99.13%
+--------------------------------------------------
+Epoch: 67
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy - precision - recall (with respect to correct indices): 82.77%  	 82.77% 	 82.13%
+--------------------------------------------------
+Epoch: 68
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 82.30%  	 99.07% 	 93.11%
+Accuracy - precision - recall (with respect to clean indices): 99.07%
+--------------------------------------------------
+Epoch: 68
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 82.30%  	 82.30% 	 82.32%
+--------------------------------------------------
+Epoch: 69
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy of superclean instances (clean vs noisy): 82.07%  	 99.09% 	 93.38%
+Accuracy - precision - recall (with respect to clean indices): 99.09%
+--------------------------------------------------
+Epoch: 69
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy - precision - recall (with respect to correct indices): 82.07%  	 82.07% 	 82.16%
+--------------------------------------------------
+Epoch: 70
+Number of superclean instances: 37400
+Percentage of superclean instances: 74.80%
+Accuracy of superclean instances (clean vs noisy): 82.42%  	 99.14% 	 92.44%
+Accuracy - precision - recall (with respect to clean indices): 99.14%
+--------------------------------------------------
+Epoch: 70
+Number of superclean instances: 37400
+Percentage of superclean instances: 74.80%
+Accuracy - precision - recall (with respect to correct indices): 82.42%  	 82.42% 	 82.06%
+--------------------------------------------------
+Epoch: 71
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 82.40%  	 99.09% 	 93.14%
+Accuracy - precision - recall (with respect to clean indices): 99.09%
+--------------------------------------------------
+Epoch: 71
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 82.40%  	 82.40% 	 82.07%
+--------------------------------------------------
+Epoch: 72
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy of superclean instances (clean vs noisy): 81.47%  	 99.06% 	 93.35%
+Accuracy - precision - recall (with respect to clean indices): 99.06%
+--------------------------------------------------
+Epoch: 72
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy - precision - recall (with respect to correct indices): 81.47%  	 81.47% 	 82.12%
+--------------------------------------------------
+Epoch: 73
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy of superclean instances (clean vs noisy): 82.87%  	 99.10% 	 93.40%
+Accuracy - precision - recall (with respect to clean indices): 99.10%
+--------------------------------------------------
+Epoch: 73
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy - precision - recall (with respect to correct indices): 82.87%  	 82.87% 	 82.24%
+--------------------------------------------------
+Epoch: 74
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy of superclean instances (clean vs noisy): 82.22%  	 99.11% 	 92.91%
+Accuracy - precision - recall (with respect to clean indices): 99.11%
+--------------------------------------------------
+Epoch: 74
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy - precision - recall (with respect to correct indices): 82.22%  	 82.22% 	 82.14%
+--------------------------------------------------
+Epoch: 75
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy of superclean instances (clean vs noisy): 83.08%  	 99.16% 	 92.96%
+Accuracy - precision - recall (with respect to clean indices): 99.16%
+--------------------------------------------------
+Epoch: 75
+Number of superclean instances: 37600
+Percentage of superclean instances: 75.20%
+Accuracy - precision - recall (with respect to correct indices): 83.08%  	 83.08% 	 82.12%
+--------------------------------------------------
+Epoch: 76
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 82.56%  	 98.97% 	 94.01%
+Accuracy - precision - recall (with respect to clean indices): 98.97%
+--------------------------------------------------
+Epoch: 76
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 82.56%  	 82.56% 	 82.54%
+--------------------------------------------------
+Epoch: 77
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy of superclean instances (clean vs noisy): 82.90%  	 99.13% 	 93.42%
+Accuracy - precision - recall (with respect to clean indices): 99.13%
+--------------------------------------------------
+Epoch: 77
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy - precision - recall (with respect to correct indices): 82.90%  	 82.90% 	 82.18%
+--------------------------------------------------
+Epoch: 78
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy of superclean instances (clean vs noisy): 83.02%  	 99.17% 	 93.21%
+Accuracy - precision - recall (with respect to clean indices): 99.17%
+--------------------------------------------------
+Epoch: 78
+Number of superclean instances: 37700
+Percentage of superclean instances: 75.40%
+Accuracy - precision - recall (with respect to correct indices): 83.02%  	 83.02% 	 82.22%
+--------------------------------------------------
+Epoch: 79
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy of superclean instances (clean vs noisy): 83.04%  	 99.08% 	 93.38%
+Accuracy - precision - recall (with respect to clean indices): 99.08%
+--------------------------------------------------
+Epoch: 79
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy - precision - recall (with respect to correct indices): 83.04%  	 83.04% 	 82.15%
+--------------------------------------------------
+Epoch: 80
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy of superclean instances (clean vs noisy): 82.45%  	 99.15% 	 93.44%
+Accuracy - precision - recall (with respect to clean indices): 99.15%
+--------------------------------------------------
+Epoch: 80
+Number of superclean instances: 37800
+Percentage of superclean instances: 75.60%
+Accuracy - precision - recall (with respect to correct indices): 82.45%  	 82.45% 	 82.09%
+--------------------------------------------------
+Epoch: 81
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 87.34%  	 99.21% 	 94.24%
+Accuracy - precision - recall (with respect to clean indices): 99.21%
+--------------------------------------------------
+Epoch: 81
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 87.34%  	 87.34% 	 82.24%
+--------------------------------------------------
+Epoch: 82
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 88.01%  	 99.21% 	 94.24%
+Accuracy - precision - recall (with respect to clean indices): 99.21%
+--------------------------------------------------
+Epoch: 82
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 88.01%  	 88.01% 	 82.19%
+--------------------------------------------------
+Epoch: 83
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 88.64%  	 99.21% 	 94.24%
+Accuracy - precision - recall (with respect to clean indices): 99.21%
+--------------------------------------------------
+Epoch: 83
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 88.64%  	 88.64% 	 82.27%
+--------------------------------------------------
+Epoch: 84
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 89.09%  	 99.25% 	 94.27%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 84
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 89.09%  	 89.09% 	 82.23%
+--------------------------------------------------
+Epoch: 85
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 89.50%  	 99.26% 	 94.29%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 85
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 89.50%  	 89.50% 	 82.24%
+--------------------------------------------------
+Epoch: 86
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 89.68%  	 99.21% 	 94.49%
+Accuracy - precision - recall (with respect to clean indices): 99.21%
+--------------------------------------------------
+Epoch: 86
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 89.68%  	 89.68% 	 82.34%
+--------------------------------------------------
+Epoch: 87
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 89.84%  	 99.21% 	 94.48%
+Accuracy - precision - recall (with respect to clean indices): 99.21%
+--------------------------------------------------
+Epoch: 87
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 89.84%  	 89.84% 	 82.34%
+--------------------------------------------------
+Epoch: 88
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 90.16%  	 99.22% 	 94.50%
+Accuracy - precision - recall (with respect to clean indices): 99.22%
+--------------------------------------------------
+Epoch: 88
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 90.16%  	 90.16% 	 82.30%
+--------------------------------------------------
+Epoch: 89
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 90.58%  	 99.27% 	 94.30%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 89
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 90.58%  	 90.58% 	 82.30%
+--------------------------------------------------
+Epoch: 90
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 90.54%  	 99.24% 	 94.51%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 90
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 90.54%  	 90.54% 	 82.34%
+--------------------------------------------------
+Epoch: 91
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 90.90%  	 99.23% 	 94.51%
+Accuracy - precision - recall (with respect to clean indices): 99.23%
+--------------------------------------------------
+Epoch: 91
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 90.90%  	 90.90% 	 82.36%
+--------------------------------------------------
+Epoch: 92
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 90.87%  	 99.24% 	 94.51%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 92
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 90.87%  	 90.87% 	 82.31%
+--------------------------------------------------
+Epoch: 93
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 91.08%  	 99.23% 	 94.51%
+Accuracy - precision - recall (with respect to clean indices): 99.23%
+--------------------------------------------------
+Epoch: 93
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 91.08%  	 91.08% 	 82.32%
+--------------------------------------------------
+Epoch: 94
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 91.52%  	 99.27% 	 94.30%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 94
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 91.52%  	 91.52% 	 82.24%
+--------------------------------------------------
+Epoch: 95
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 91.47%  	 99.25% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 95
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 91.47%  	 91.47% 	 82.32%
+--------------------------------------------------
+Epoch: 96
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 91.35%  	 99.26% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 96
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 91.35%  	 91.35% 	 82.33%
+--------------------------------------------------
+Epoch: 97
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 91.54%  	 99.25% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 97
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 91.54%  	 91.54% 	 82.35%
+--------------------------------------------------
+Epoch: 98
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 92.06%  	 99.25% 	 94.52%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 98
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 92.06%  	 92.06% 	 82.35%
+--------------------------------------------------
+Epoch: 99
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 92.08%  	 99.24% 	 94.52%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 99
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 92.08%  	 92.08% 	 82.43%
+--------------------------------------------------
+Epoch: 100
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 92.03%  	 99.23% 	 94.75%
+Accuracy - precision - recall (with respect to clean indices): 99.23%
+--------------------------------------------------
+Epoch: 100
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 92.03%  	 92.03% 	 82.50%
+--------------------------------------------------
+Epoch: 101
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 92.35%  	 99.25% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 101
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 92.35%  	 92.35% 	 82.48%
+--------------------------------------------------
+Epoch: 102
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 92.52%  	 99.24% 	 94.52%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 102
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 92.52%  	 92.52% 	 82.42%
+--------------------------------------------------
+Epoch: 103
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 92.92%  	 99.24% 	 94.51%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 103
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 92.92%  	 92.92% 	 82.43%
+--------------------------------------------------
+Epoch: 104
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 92.86%  	 99.25% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 104
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 92.86%  	 92.86% 	 82.40%
+--------------------------------------------------
+Epoch: 105
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 92.89%  	 99.26% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 105
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 92.89%  	 92.89% 	 82.46%
+--------------------------------------------------
+Epoch: 106
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 92.45%  	 99.21% 	 94.73%
+Accuracy - precision - recall (with respect to clean indices): 99.21%
+--------------------------------------------------
+Epoch: 106
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 92.45%  	 92.45% 	 82.53%
+--------------------------------------------------
+Epoch: 107
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 92.69%  	 99.22% 	 94.74%
+Accuracy - precision - recall (with respect to clean indices): 99.22%
+--------------------------------------------------
+Epoch: 107
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 92.69%  	 92.69% 	 82.49%
+--------------------------------------------------
+Epoch: 108
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 93.09%  	 99.26% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 108
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 93.09%  	 93.09% 	 82.40%
+--------------------------------------------------
+Epoch: 109
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 92.90%  	 99.25% 	 94.52%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 109
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 92.90%  	 92.90% 	 82.46%
+--------------------------------------------------
+Epoch: 110
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 93.30%  	 99.25% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 110
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 93.30%  	 93.30% 	 82.49%
+--------------------------------------------------
+Epoch: 111
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 93.39%  	 99.22% 	 94.74%
+Accuracy - precision - recall (with respect to clean indices): 99.22%
+--------------------------------------------------
+Epoch: 111
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 93.39%  	 93.39% 	 82.52%
+--------------------------------------------------
+Epoch: 112
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 93.47%  	 99.27% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 112
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 93.47%  	 93.47% 	 82.40%
+--------------------------------------------------
+Epoch: 113
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 93.32%  	 99.27% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 113
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 93.32%  	 93.32% 	 82.40%
+--------------------------------------------------
+Epoch: 114
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 93.81%  	 99.26% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 114
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 93.81%  	 93.81% 	 82.45%
+--------------------------------------------------
+Epoch: 115
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 93.49%  	 99.26% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 115
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 93.49%  	 93.49% 	 82.47%
+--------------------------------------------------
+Epoch: 116
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 93.93%  	 99.29% 	 94.56%
+Accuracy - precision - recall (with respect to clean indices): 99.29%
+--------------------------------------------------
+Epoch: 116
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 93.93%  	 93.93% 	 82.47%
+--------------------------------------------------
+Epoch: 117
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 93.54%  	 99.26% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 117
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 93.54%  	 93.54% 	 82.50%
+--------------------------------------------------
+Epoch: 118
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 93.78%  	 99.27% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 118
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 93.78%  	 93.78% 	 82.45%
+--------------------------------------------------
+Epoch: 119
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 93.87%  	 99.22% 	 94.75%
+Accuracy - precision - recall (with respect to clean indices): 99.22%
+--------------------------------------------------
+Epoch: 119
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 93.87%  	 93.87% 	 82.57%
+--------------------------------------------------
+Epoch: 120
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.00%  	 99.24% 	 94.51%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 120
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.00%  	 94.00% 	 82.48%
+--------------------------------------------------
+Epoch: 121
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 93.72%  	 99.25% 	 94.77%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 121
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 93.72%  	 93.72% 	 82.53%
+--------------------------------------------------
+Epoch: 122
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 94.04%  	 99.24% 	 94.76%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 122
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 94.04%  	 94.04% 	 82.59%
+--------------------------------------------------
+Epoch: 123
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.35%  	 99.30% 	 94.57%
+Accuracy - precision - recall (with respect to clean indices): 99.30%
+--------------------------------------------------
+Epoch: 123
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.35%  	 94.35% 	 82.49%
+--------------------------------------------------
+Epoch: 124
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 94.01%  	 99.24% 	 94.76%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 124
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 94.01%  	 94.01% 	 82.56%
+--------------------------------------------------
+Epoch: 125
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 94.13%  	 99.23% 	 94.75%
+Accuracy - precision - recall (with respect to clean indices): 99.23%
+--------------------------------------------------
+Epoch: 125
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 94.13%  	 94.13% 	 82.65%
+--------------------------------------------------
+Epoch: 126
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 94.42%  	 99.22% 	 94.74%
+Accuracy - precision - recall (with respect to clean indices): 99.22%
+--------------------------------------------------
+Epoch: 126
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 94.42%  	 94.42% 	 82.59%
+--------------------------------------------------
+Epoch: 127
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.63%  	 99.29% 	 94.56%
+Accuracy - precision - recall (with respect to clean indices): 99.29%
+--------------------------------------------------
+Epoch: 127
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.63%  	 94.63% 	 82.53%
+--------------------------------------------------
+Epoch: 128
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.57%  	 99.27% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 128
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.57%  	 94.57% 	 82.45%
+--------------------------------------------------
+Epoch: 129
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.52%  	 99.26% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 129
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.52%  	 94.52% 	 82.52%
+--------------------------------------------------
+Epoch: 130
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.41%  	 99.29% 	 94.56%
+Accuracy - precision - recall (with respect to clean indices): 99.29%
+--------------------------------------------------
+Epoch: 130
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.41%  	 94.41% 	 82.48%
+--------------------------------------------------
+Epoch: 131
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.73%  	 99.28% 	 94.55%
+Accuracy - precision - recall (with respect to clean indices): 99.28%
+--------------------------------------------------
+Epoch: 131
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.73%  	 94.73% 	 82.48%
+--------------------------------------------------
+Epoch: 132
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.96%  	 99.26% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 132
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.96%  	 94.96% 	 82.55%
+--------------------------------------------------
+Epoch: 133
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 94.50%  	 99.25% 	 94.77%
+Accuracy - precision - recall (with respect to clean indices): 99.25%
+--------------------------------------------------
+Epoch: 133
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 94.50%  	 94.50% 	 82.53%
+--------------------------------------------------
+Epoch: 134
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.97%  	 99.24% 	 94.51%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 134
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.97%  	 94.97% 	 82.53%
+--------------------------------------------------
+Epoch: 135
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.99%  	 99.26% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 135
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.99%  	 94.99% 	 82.55%
+--------------------------------------------------
+Epoch: 136
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.68%  	 99.26% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 136
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.68%  	 94.68% 	 82.58%
+--------------------------------------------------
+Epoch: 137
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.78%  	 99.26% 	 94.53%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 137
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.78%  	 94.78% 	 82.55%
+--------------------------------------------------
+Epoch: 138
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 94.41%  	 99.22% 	 94.75%
+Accuracy - precision - recall (with respect to clean indices): 99.22%
+--------------------------------------------------
+Epoch: 138
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 94.41%  	 94.41% 	 82.59%
+--------------------------------------------------
+Epoch: 139
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 94.71%  	 99.23% 	 94.75%
+Accuracy - precision - recall (with respect to clean indices): 99.23%
+--------------------------------------------------
+Epoch: 139
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 94.71%  	 94.71% 	 82.62%
+--------------------------------------------------
+Epoch: 140
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 94.67%  	 99.31% 	 94.33%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 140
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 94.67%  	 94.67% 	 82.35%
+--------------------------------------------------
+Epoch: 141
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.10%  	 99.27% 	 94.55%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 141
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.10%  	 95.10% 	 82.55%
+--------------------------------------------------
+Epoch: 142
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.13%  	 99.27% 	 94.55%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 142
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.13%  	 95.13% 	 82.52%
+--------------------------------------------------
+Epoch: 143
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.02%  	 99.27% 	 94.55%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 143
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.02%  	 95.02% 	 82.53%
+--------------------------------------------------
+Epoch: 144
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.16%  	 99.30% 	 94.57%
+Accuracy - precision - recall (with respect to clean indices): 99.30%
+--------------------------------------------------
+Epoch: 144
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.16%  	 95.16% 	 82.53%
+--------------------------------------------------
+Epoch: 145
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.04%  	 99.29% 	 94.56%
+Accuracy - precision - recall (with respect to clean indices): 99.29%
+--------------------------------------------------
+Epoch: 145
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.04%  	 95.04% 	 82.55%
+--------------------------------------------------
+Epoch: 146
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.39%  	 99.30% 	 94.57%
+Accuracy - precision - recall (with respect to clean indices): 99.30%
+--------------------------------------------------
+Epoch: 146
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.39%  	 95.39% 	 82.52%
+--------------------------------------------------
+Epoch: 147
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.17%  	 99.27% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 147
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.17%  	 95.17% 	 82.54%
+--------------------------------------------------
+Epoch: 148
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.20%  	 99.29% 	 94.56%
+Accuracy - precision - recall (with respect to clean indices): 99.29%
+--------------------------------------------------
+Epoch: 148
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.20%  	 95.20% 	 82.57%
+--------------------------------------------------
+Epoch: 149
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 94.91%  	 99.31% 	 94.58%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 149
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 94.91%  	 94.91% 	 82.43%
+--------------------------------------------------
+Epoch: 150
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.13%  	 99.27% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 150
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.13%  	 95.13% 	 82.43%
+--------------------------------------------------
+Epoch: 151
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy of superclean instances (clean vs noisy): 95.10%  	 99.24% 	 94.76%
+Accuracy - precision - recall (with respect to clean indices): 99.24%
+--------------------------------------------------
+Epoch: 151
+Number of superclean instances: 38300
+Percentage of superclean instances: 76.60%
+Accuracy - precision - recall (with respect to correct indices): 95.10%  	 95.10% 	 82.66%
+--------------------------------------------------
+Epoch: 152
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.27%  	 99.26% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 152
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.27%  	 95.27% 	 82.53%
+--------------------------------------------------
+Epoch: 153
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.33%  	 99.31% 	 94.58%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 153
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.33%  	 95.33% 	 82.44%
+--------------------------------------------------
+Epoch: 154
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.65%  	 99.28% 	 94.55%
+Accuracy - precision - recall (with respect to clean indices): 99.28%
+--------------------------------------------------
+Epoch: 154
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.65%  	 95.65% 	 82.55%
+--------------------------------------------------
+Epoch: 155
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.42%  	 99.27% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 155
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.42%  	 95.42% 	 82.51%
+--------------------------------------------------
+Epoch: 156
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.58%  	 99.31% 	 94.58%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 156
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.58%  	 95.58% 	 82.51%
+--------------------------------------------------
+Epoch: 157
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.47%  	 99.26% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.26%
+--------------------------------------------------
+Epoch: 157
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.47%  	 95.47% 	 82.56%
+--------------------------------------------------
+Epoch: 158
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.43%  	 99.27% 	 94.54%
+Accuracy - precision - recall (with respect to clean indices): 99.27%
+--------------------------------------------------
+Epoch: 158
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.43%  	 95.43% 	 82.50%
+--------------------------------------------------
+Epoch: 159
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy of superclean instances (clean vs noisy): 95.53%  	 99.30% 	 94.57%
+Accuracy - precision - recall (with respect to clean indices): 99.30%
+--------------------------------------------------
+Epoch: 159
+Number of superclean instances: 38200
+Percentage of superclean instances: 76.40%
+Accuracy - precision - recall (with respect to correct indices): 95.53%  	 95.53% 	 82.47%
+--------------------------------------------------
+Epoch: 160
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 95.90%  	 99.33% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 160
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 95.90%  	 95.90% 	 82.45%
+--------------------------------------------------
+Epoch: 160
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 95.90%  	 99.33% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 160
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 95.90%  	 95.90% 	 82.45%
+--------------------------------------------------
+Epoch: 161
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.52%  	 99.33% 	 94.36%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 161
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.52%  	 96.52% 	 82.37%
+--------------------------------------------------
+Epoch: 162
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.49%  	 99.32% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 162
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.49%  	 96.49% 	 82.31%
+--------------------------------------------------
+Epoch: 163
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.60%  	 99.33% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 163
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.60%  	 96.60% 	 82.34%
+--------------------------------------------------
+Epoch: 164
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.70%  	 99.32% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 164
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.70%  	 96.70% 	 82.35%
+--------------------------------------------------
+Epoch: 165
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.80%  	 99.32% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 165
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.80%  	 96.80% 	 82.33%
+--------------------------------------------------
+Epoch: 166
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.81%  	 99.33% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 166
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.81%  	 96.81% 	 82.34%
+--------------------------------------------------
+Epoch: 167
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.91%  	 99.32% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 167
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.91%  	 96.91% 	 82.32%
+--------------------------------------------------
+Epoch: 168
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.82%  	 99.31% 	 94.33%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 168
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.82%  	 96.82% 	 82.34%
+--------------------------------------------------
+Epoch: 169
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.86%  	 99.32% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 169
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.86%  	 96.86% 	 82.29%
+--------------------------------------------------
+Epoch: 170
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 96.93%  	 99.31% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 170
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 96.93%  	 96.93% 	 82.29%
+--------------------------------------------------
+Epoch: 171
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.01%  	 99.31% 	 94.33%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 171
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.01%  	 97.01% 	 82.31%
+--------------------------------------------------
+Epoch: 172
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.04%  	 99.32% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 172
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.04%  	 97.04% 	 82.35%
+--------------------------------------------------
+Epoch: 173
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.04%  	 99.31% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 173
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.04%  	 97.04% 	 82.32%
+--------------------------------------------------
+Epoch: 174
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.09%  	 99.31% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 174
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.09%  	 97.09% 	 82.35%
+--------------------------------------------------
+Epoch: 175
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.15%  	 99.32% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 175
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.15%  	 97.15% 	 82.38%
+--------------------------------------------------
+Epoch: 176
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.01%  	 99.33% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 176
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.01%  	 97.01% 	 82.32%
+--------------------------------------------------
+Epoch: 177
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.12%  	 99.32% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 177
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.12%  	 97.12% 	 82.36%
+--------------------------------------------------
+Epoch: 178
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.17%  	 99.31% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 178
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.17%  	 97.17% 	 82.35%
+--------------------------------------------------
+Epoch: 179
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.09%  	 99.33% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 179
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.09%  	 97.09% 	 82.33%
+--------------------------------------------------
+Epoch: 180
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.16%  	 99.31% 	 94.33%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 180
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.16%  	 97.16% 	 82.35%
+--------------------------------------------------
+Epoch: 181
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.29%  	 99.32% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 181
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.29%  	 97.29% 	 82.31%
+--------------------------------------------------
+Epoch: 182
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.20%  	 99.30% 	 94.32%
+Accuracy - precision - recall (with respect to clean indices): 99.30%
+--------------------------------------------------
+Epoch: 182
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.20%  	 97.20% 	 82.36%
+--------------------------------------------------
+Epoch: 183
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.30%  	 99.31% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 183
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.30%  	 97.30% 	 82.35%
+--------------------------------------------------
+Epoch: 184
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.25%  	 99.31% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 184
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.25%  	 97.25% 	 82.33%
+--------------------------------------------------
+Epoch: 185
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.25%  	 99.32% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 185
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.25%  	 97.25% 	 82.33%
+--------------------------------------------------
+Epoch: 186
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.36%  	 99.32% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 186
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.36%  	 97.36% 	 82.38%
+--------------------------------------------------
+Epoch: 187
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy of superclean instances (clean vs noisy): 97.46%  	 99.33% 	 94.11%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 187
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy - precision - recall (with respect to correct indices): 97.46%  	 97.46% 	 82.24%
+--------------------------------------------------
+Epoch: 188
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.27%  	 99.31% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 188
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.27%  	 97.27% 	 82.36%
+--------------------------------------------------
+Epoch: 189
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy of superclean instances (clean vs noisy): 97.40%  	 99.34% 	 94.12%
+Accuracy - precision - recall (with respect to clean indices): 99.34%
+--------------------------------------------------
+Epoch: 189
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy - precision - recall (with respect to correct indices): 97.40%  	 97.40% 	 82.28%
+--------------------------------------------------
+Epoch: 190
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy of superclean instances (clean vs noisy): 97.42%  	 99.33% 	 94.11%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 190
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy - precision - recall (with respect to correct indices): 97.42%  	 97.42% 	 82.26%
+--------------------------------------------------
+Epoch: 191
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.37%  	 99.31% 	 94.33%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 191
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.37%  	 97.37% 	 82.35%
+--------------------------------------------------
+Epoch: 192
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.43%  	 99.32% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 192
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.43%  	 97.43% 	 82.38%
+--------------------------------------------------
+Epoch: 193
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.40%  	 99.31% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 193
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.40%  	 97.40% 	 82.31%
+--------------------------------------------------
+Epoch: 194
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.41%  	 99.30% 	 94.33%
+Accuracy - precision - recall (with respect to clean indices): 99.30%
+--------------------------------------------------
+Epoch: 194
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.41%  	 97.41% 	 82.38%
+--------------------------------------------------
+Epoch: 195
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.35%  	 99.30% 	 94.33%
+Accuracy - precision - recall (with respect to clean indices): 99.30%
+--------------------------------------------------
+Epoch: 195
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.35%  	 97.35% 	 82.35%
+--------------------------------------------------
+Epoch: 196
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.42%  	 99.33% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 196
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.42%  	 97.42% 	 82.32%
+--------------------------------------------------
+Epoch: 197
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.42%  	 99.31% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.31%
+--------------------------------------------------
+Epoch: 197
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.42%  	 97.42% 	 82.35%
+--------------------------------------------------
+Epoch: 198
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.46%  	 99.33% 	 94.35%
+Accuracy - precision - recall (with respect to clean indices): 99.33%
+--------------------------------------------------
+Epoch: 198
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.46%  	 97.46% 	 82.35%
+--------------------------------------------------
+Epoch: 199
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy of superclean instances (clean vs noisy): 97.53%  	 99.37% 	 94.14%
+Accuracy - precision - recall (with respect to clean indices): 99.37%
+--------------------------------------------------
+Epoch: 199
+Number of superclean instances: 38000
+Percentage of superclean instances: 76.00%
+Accuracy - precision - recall (with respect to correct indices): 97.53%  	 97.53% 	 82.17%
+--------------------------------------------------
+Epoch: 200
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy of superclean instances (clean vs noisy): 97.38%  	 99.32% 	 94.34%
+Accuracy - precision - recall (with respect to clean indices): 99.32%
+--------------------------------------------------
+Epoch: 200
+Number of superclean instances: 38100
+Percentage of superclean instances: 76.20%
+Accuracy - precision - recall (with respect to correct indices): 97.38%  	 97.38% 	 82.29%
+--------------------------------------------------

@@ -39,6 +39,21 @@ sns.set()
 
 
 contrastive_criterion2 = Contrastive_loss2.SupConLoss()
+
+def conv_p(logits):
+    # 10/n_class
+    alpha_t = softplus_evidence(logits)+10./args.num_class
+    total_alpha_t = torch.sum(alpha_t, dim=1, keepdim=True)
+    expected_p = alpha_t / total_alpha_t
+    return expected_p
+
+def consistency_loss(output1, output2):            
+    preds1 = conv_p(output1).detach()
+    preds2 = torch.log(conv_p(output2))
+    loss_kldiv = F.kl_div(preds2, preds1, reduction='none')
+    loss_kldiv = torch.sum(loss_kldiv, dim=1)
+    return loss_kldiv
+
                       
 def train(epoch,net,net2,optimizer,labeled_trainloader, unlabeled_trainloader, all_train_loss, all_train_loss_x, all_train_loss_u, all_train_loss_contrastive, op, savelog=False):
     net.train()
@@ -136,40 +151,37 @@ def train(epoch,net,net2,optimizer,labeled_trainloader, unlabeled_trainloader, a
 
             
             # mixmatch
-            all_inputs = torch.cat([inputs_x3, inputs_x4, inputs_u3, inputs_u4], dim=0)
+            all_inputs_aug = torch.cat([inputs_x3, inputs_x4, inputs_u3, inputs_u4], dim=0)
+            all_inputs = torch.cat([inputs_x, inputs_x2, inputs_u, inputs_u2], dim=0)
             all_targets = torch.cat([targets_x, targets_x, targets_u, targets_u], dim=0)
 
-
-            #mixed inputs
             idx = torch.randperm(all_inputs.size(0))
+
             input_a, input_b = all_inputs, all_inputs[idx]
+            input_a_aug, input_b_aug = all_inputs_aug, all_inputs_aug[idx]
             target_a, target_b = all_targets, all_targets[idx]
+
             l = np.random.beta(args.alpha, args.alpha, size=(all_inputs.size(0), 1, 1, 1))  # Ensure broadcasting shape
             l = np.maximum(l, 1 - l)
             l = torch.from_numpy(l).float().cuda()
-            mixed_input = l * input_a + (1 - l) * input_b
+
+            mixed_input = l * input_a + (1 - l) * input_b       
+            mixed_input_aug = l * input_a_aug + (1 - l) * input_b_aug   
+
             l_targets = l.view(all_inputs.size(0), 1)
             mixed_target = l_targets * target_a + (1 - l_targets) * target_b
 
-            #mixclr inputs
-            idx_aux = torch.randperm(int(all_inputs.size(0)/4))
-            idx = torch.cat([2*int(all_inputs.size(0)/4) + idx_aux, 3*int(all_inputs.size(0)/4) + idx_aux, idx_aux, int(all_inputs.size(0)/4) + idx_aux])
-            input_a, input_b = all_inputs, all_inputs[idx]
-            target_a, target_b = all_targets, all_targets[idx]
-            l = np.random.beta(args.alpha, args.alpha)
-            l = max(l, 1 - l)
-            mixclr_input = l * input_a + (1 - l) * input_b
-
-
             #model outputs
-            inputs = torch.cat([mixed_input, all_inputs, mixclr_input], dim=0)
+            inputs = torch.cat([mixed_input_aug, all_inputs, mixed_input], dim=0)
             all_logits, all_features = net(inputs, forward_pass='cls_proj')
 
-            mixed_logits = all_logits[:mixed_input.shape[0]]
-            mixclr_logits = all_logits[2*mixed_input.shape[0]:]
+            aug_mixed_logits = all_logits[:mixed_input.shape[0]]
+            aug_mixed_features = all_features[:mixed_input.shape[0]]
+
+            mixed_logits = all_logits[2*mixed_input.shape[0]:]
+            mixed_features = all_features[2*mixed_input.shape[0]:]
+
             logits = all_logits[mixed_input.shape[0]:2*mixed_input.shape[0]]
-            mixed_features = all_features[:mixed_input.shape[0]]
-            mixclr_features = all_features[2*mixed_input.shape[0]:]
             features = all_features[mixed_input.shape[0]:2*mixed_input.shape[0]]
 
             loss_plr = loss_mix_plr = loss_simCLR = loss_mixCLR = 0
@@ -188,14 +200,8 @@ def train(epoch,net,net2,optimizer,labeled_trainloader, unlabeled_trainloader, a
                 features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
                 loss_plr = plr_loss(features, mask=contrastive_mask) #unsupervised loss: positive examples are 2 augmentations of the same sample only. Negative examples are samples that do no share the same class between the topk predicted classes
                 
-                #mix
-                #fx3, fx4, fu3, fu4 = torch.chunk(mixclr_features, 4, dim=0)
-                #f1, f2 = torch.cat([fx3, fu3], dim=0), torch.cat([fx4, fu4], dim=0)
-                #features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
-                #loss_mix_plr = plr_loss(features, mask=contrastive_mask) #unsupervised loss: positive examples are 2 augmentations of the same sample only. Negative examples are samples that do no share the same class between the topk predicted classes
 
-
-            if args.sim_clr:
+            """if args.sim_clr:
                 fx3, fx4, fu3, fu4 = torch.chunk(features, 4, dim=0) # same indices
 
                 fu, fx = torch.cat([fu3.unsqueeze(1), fu4.unsqueeze(1)], dim=1), torch.cat([fx3.unsqueeze(1), fx4.unsqueeze(1)], dim=1)
@@ -208,10 +214,10 @@ def train(epoch,net,net2,optimizer,labeled_trainloader, unlabeled_trainloader, a
                     loss_simCLR_x = contrastive_criterion2(fx, labels_x)#supervised simclr loss
                     loss_simCLR = loss_simCLR_u + loss_simCLR_x
                 else:
-                    loss_simCLR = loss_simCLR_u
+                    loss_simCLR = loss_simCLR_u"""
                 
 
-            if args.mix_clr:      
+            """if args.mix_clr:      
                 fx3, fx4, fu3, fu4 = torch.chunk(mixclr_features, 4, dim=0)
                 fu, fx = torch.cat([fu3.unsqueeze(1), fu4.unsqueeze(1)], dim=1), torch.cat([fx3.unsqueeze(1), fx4.unsqueeze(1)], dim=1)
                 f_all = torch.cat([fu, fx], dim=0) 
@@ -219,7 +225,7 @@ def train(epoch,net,net2,optimizer,labeled_trainloader, unlabeled_trainloader, a
 
 
             if args.uncertainty:
-                evidence = softplus_evidence(mixed_logits)
+                evidence = softplus_evidence(aug_mixed_logits)
                 alpha = evidence + args.evidence_factor
                 if args.uncertainty_class:
                     alpha_e = alpha[:, :args.num_class]  # Extract the first `num_classes` columns
@@ -228,17 +234,23 @@ def train(epoch,net,net2,optimizer,labeled_trainloader, unlabeled_trainloader, a
                 S = torch.sum(alpha, dim=1, keepdim=True)
                 probs = alpha / S
                 pred_mean = probs.mean(0)
-                outputs_x = mixed_logits[:batch_size*2]
+                outputs_x = aug_mixed_logits[:batch_size*2]
                 probs_u = probs[batch_size*2:]
 
-                Lx, Lu, lamb = criterion(outputs_x, mixed_target[:batch_size*2], probs_u, mixed_target[batch_size*2:], epoch+batch_idx/num_iter, warm_up)
+                Lx, Lu, lamb = criterion(outputs_x, mixed_target[:batch_size*2], probs_u, mixed_target[batch_size*2:], epoch+batch_idx/num_iter, warm_up, target_a[:batch_size*2], target_b[:batch_size*2], l_targets)
 
             else:
-                pred_mean = torch.softmax(mixed_logits, dim=1).mean(0)
-                logits_x = mixed_logits[:batch_size*2]
-                logits_u = mixed_logits[batch_size*2:]
+                pred_mean = torch.softmax(aug_mixed_logits, dim=1).mean(0)
+                logits_x = aug_mixed_logits[:batch_size*2]
+                logits_u = aug_mixed_logits[batch_size*2:]
                 Lx, Lu, lamb = criterion(logits_x, mixed_target[:batch_size*2], logits_u, mixed_target[batch_size*2:], epoch+batch_idx/num_iter, warm_up)
 
+            
+            if args.consistency_loss:
+                if args.dataset == "cifar10":
+                    Con = 3 * torch.mean(consistency_loss(mixed_logits, aug_mixed_logits))
+                else:
+                    Con = 1 * torch.mean(consistency_loss(mixed_logits, aug_mixed_logits))
 
             #regularization
             if args.uncertainty_class:
@@ -249,12 +261,13 @@ def train(epoch,net,net2,optimizer,labeled_trainloader, unlabeled_trainloader, a
             prior = prior.cuda()
             penalty = torch.sum(prior*torch.log(prior/pred_mean))
 
-            loss = Lx + lamb * Lu + penalty + args.lambda_plr*(loss_plr + 0.2*loss_mix_plr) + args.lambda_c*(loss_simCLR + 0.2*loss_mixCLR)
+            cl = args.lambda_plr*(loss_plr + 0.2*loss_mix_plr) + args.lambda_c*(loss_simCLR + 0.2*loss_mixCLR) + Con
+            contrastive_loss += cl
+            loss = Lx + lamb * Lu + penalty + cl
             train_loss += loss
             train_loss_lx += Lx
             train_loss_u += Lu
             train_loss_penalty += penalty
-            contrastive_loss += args.lambda_plr*(loss_plr + 0.2*loss_mix_plr) + args.lambda_c*(loss_simCLR + 0.2*loss_mixCLR)
 
             # compute gradient and do SGD step
             optimizer.zero_grad()
@@ -302,10 +315,9 @@ def warmup(epoch,net,optimizer,dataloader,savelog=False):
         if args.uncertainty:
             if args.uncertainty_class:
                 loss, _ = m_edl_loss(outputs, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+            
             else:    
                 loss, _ = edl_loss(outputs, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
-        elif args.gce_loss:
-            loss = gce_loss(outputs, labels)
         else:
             loss = ce_loss(outputs, labels)
         if args.noise_mode=='asym':  # penalize confident prediction for asymmetric noise
@@ -391,6 +403,7 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margins_labels, eval_lo
     dissonance = torch.zeros(len(eval_loader.dataset))
     entropy = torch.zeros(len(eval_loader.dataset))
     uncertainty_class = torch.zeros(len(eval_loader.dataset))
+    mutual_info = torch.zeros(len(eval_loader.dataset))
     
     preds = torch.zeros(len(eval_loader.dataset))
     preds_classes = torch.zeros(len(eval_loader.dataset), args.num_class)
@@ -418,7 +431,10 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margins_labels, eval_lo
                 
                 #compute prototype loss with
                 if args.plr_loss:
-                    _, loss_proto = edl_loss(logits_proto, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+                    if args.loss_proto == "edl":
+                        _, loss_proto = edl_loss(logits_proto, y.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+                    else:
+                        loss_proto = ce_loss_sample(logits_proto, targets)
                 
                 evidence = softplus_evidence(outputs)
                 alpha = evidence + args.evidence_factor
@@ -433,7 +449,7 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margins_labels, eval_lo
 
 
             _, pred = torch.max(outputs.data, -1)
-            vac, entr, diss, margin, evide, uncert = compute_dirichlet_metrics(outputs, args.num_class, args.edl_activation, args.evidence_factor)
+            vac, entr, diss, margin, evide, uncert, mi = compute_dirichlet_metrics(outputs, args.num_class, args.edl_activation, args.evidence_factor)
             
             #marc: compute accuracy of clean and noisy samples with ground true labels and noisy labels
             inds_clean_set = set(map(int, inds_clean))  # Ensure all values are Python ints
@@ -471,11 +487,12 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margins_labels, eval_lo
                     entropy[index[b]]=entr[b]
                     evidences[index[b]] = evide[b]
                     uncertainty_class[index[b]] = uncert[b]
+                    mutual_info[index[b]]=mi[b]
 
                     #compute margins of true labels
                     evidence_pos = outputs[b,targets[b]]
                     copy_outputs = outputs[b].clone()
-                    copy_outputs[targets[b]] = -1e5
+                    copy_outputs[targets[b]] = float('-inf') 
                     evidence_neg = copy_outputs.max()
                     margin_true_label[index[b]]=evidence_pos-evidence_neg
 
@@ -490,15 +507,17 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margins_labels, eval_lo
     losses = (losses-losses.min())/(losses.max() - losses.min())
     losses_proto = (losses_proto - losses_proto.min()) / (losses_proto.max() - losses_proto.min())
     #margins_labels = (margins_labels - margins_labels.min())/(margins_labels.max()- margins_labels.min())
-    #margin_true_label = (margin_true_label - margin_true_label.min())/(margin_true_label.max() - margin_true_label.min())
+    margin_true_label = (margin_true_label - margin_true_label.min())/(margin_true_label.max() - margin_true_label.min())
     #vacuity = (vacuity - vacuity.min())/(vacuity.max() - vacuity.min())
     #dissonance = (dissonance - dissonance.min())/(dissonance.max() - dissonance.min())
     #entropy = (entropy - entropy.min())/(entropy.max() - entropy.min())
     #evidences =  (evidences - evidences.min())/(evidences.max() - evidences.min())
 
+
     eval_loss_hist.append(losses)
     all_preds.append(preds)
     all_loss.append(losses)
+    all_proto_loss[net_idx].append(losses_proto)
     all_hist.append(preds_classes)
     all_margins_labels.append(margins_labels)
     eval_acc_hist.append([train_acc/len(eval_loader.dataset), acc_clean/len(inds_clean), acc_noisy/len(inds_noisy)])
@@ -509,6 +528,7 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margins_labels, eval_lo
     all_entropy[net_idx].append(entropy)
     all_margin_true_label[net_idx].append(margin_true_label)
     all_uncertainty_class[net_idx].append(uncertainty_class)
+    all_mutual_info[net_idx].append(mutual_info)
 
     
     if args.use_loss:
@@ -522,6 +542,7 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margins_labels, eval_lo
             input_loss_proto = losses_proto.reshape(-1, 1)
 
         # fit a two-component GMM to the loss
+
         if args.plr_loss:
             input_loss = input_loss.cpu().numpy()
             input_loss_proto = input_loss_proto.cpu().numpy()
@@ -553,7 +574,6 @@ def eval_train(model, all_loss, all_preds, all_hist, all_margins_labels, eval_lo
         prob = prob[:,gmm.means_.argmax()]
 
     return prob, all_loss, all_preds, all_hist, all_margins_labels, eval_loss_hist, eval_acc_hist, correct_indices, noisy_correct_indices, {'op': op, 'pl': pl, 'pt': pt, 'ft': ft}
-
 
 def get_clean(prob, net_idx):
     pred = (prob > args.p_threshold)      
@@ -597,7 +617,7 @@ def linear_rampup(current, warm_up, rampup_length=16):
     return args.lambda_u*float(current)
 
 class SemiLoss(object):
-    def __call__(self, outputs_x, targets_x, outputs_u, targets_u, epoch, warm_up):
+    def __call__(self, outputs_x, targets_x, outputs_u, targets_u, epoch, warm_up, targets_x1=None, targets_x2=None, l=None):
       if not args.uncertainty:
           probs_u = torch.softmax(outputs_u, dim=1)
           Lx = -torch.mean(torch.sum(F.log_softmax(outputs_x, dim=1) * targets_x, dim=1))
@@ -609,6 +629,10 @@ class SemiLoss(object):
           Lu = torch.mean((probs_u - targets_u)**2)
           if args.uncertainty_class:
             Lx, _ = m_edl_loss(outputs_x, targets_x.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+          if args.two_edl:
+            Lx11, Lx12 = edl_loss(outputs_x, targets_x1.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+            Lx21, Lx22 = edl_loss(outputs_x, targets_x2.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
+            Lx = (l*Lx11 + (1-l)*Lx21).mean() + (l*Lx12 + (1-l)*Lx22).mean()
           else:  
             Lx, _ = edl_loss(outputs_x, targets_x.float(), epoch_num=epoch, num_classes = args.num_class, annealing_step= args.ann_step, activation = args.edl_activation, evidence_factor = args.evidence_factor)
           return Lx, Lu, linear_rampup(epoch,warm_up)
@@ -685,6 +709,7 @@ def save_models(save_path):
                     'state_dict2'     : net2.state_dict(),
                     'optimizer2'      : optimizer2.state_dict(),
                     'all_loss': all_loss,
+                    'all_proto_loss': all_proto_loss,
                     'all_preds': all_preds,
                     'hist_preds': hist_preds,
 
@@ -720,6 +745,10 @@ def save_models(save_path):
                     'all_evidence': all_evidence,
                     'all_margin_true_label': all_margin_true_label,
                     'all_uncertainty_class': all_uncertainty_class,
+                    'all_mutual_info': all_mutual_info,
+
+                    'clean_metrics': clean_metrics,
+                    'correct_metrics': correct_metrics,
                     })
 
 
@@ -739,7 +768,7 @@ def save_models(save_path):
         
 
 def write_log(idx, predicted, log_file, threshold = None):
-    acc, prec, recall = get_metrics(predicted, clean_labels, idx)
+    acc, prec, recall = get_metrics(predicted, clean_labels, idx, clean_indices=inds_clean)
 
     total_instances = len(eval_loader.dataset)
     percentage = (len(idx) / total_instances) * 100
@@ -755,13 +784,14 @@ def write_log(idx, predicted, log_file, threshold = None):
     log_file.write(f"Accuracy - precision - recall (with respect to clean indices): {clean_accuracy:.2f}%\n")
     log_file.write("-" * 50 + "\n")
     log_file.flush()
-    clean_metrics.append([len(idx), percentage, acc, prec, recall])
+    clean_metrics.append([len(idx), percentage, clean_accuracy, prec, recall, acc])
 
 def write_log2(idx, predicted, log_file, threshold = None):
-    acc, prec, recall = get_metrics(predicted, correct_indices1, idx)
+    acc, prec, recall = get_metrics(predicted, clean_labels, idx, clean_indices=correct_indices1)
 
     total_instances = len(eval_loader.dataset)
     percentage = (len(idx) / total_instances) * 100
+    
     
     log_file.write(f"Epoch: {epoch}\n")
     log_file.write(f"Number of superclean instances: {len(idx)}\n")
@@ -807,27 +837,35 @@ def test_superclean(net1, net2):
     
     return all_predicted, all_predicted1, all_predicted2
 
-def get_metrics(predicted, clean_labels, idx):
+
+def get_metrics(predicted, clean_labels, idx, clean_indices):
     # Ensure torch tensors
     predicted = torch.tensor(predicted) if not torch.is_tensor(predicted) else predicted
     clean_labels_tensor = torch.tensor(clean_labels, dtype=torch.long)
     idx = torch.tensor(idx) if not torch.is_tensor(idx) else idx
+    clean_indices = torch.tensor(clean_indices) if not torch.is_tensor(clean_indices) else clean_indices
 
     if len(idx) == 0:
         return 0.0, 0.0, 0.0  # Avoid divide-by-zero
 
-    # Subset predictions and labels
+    # Accuracy: compare predictions vs. true labels on selected indices
     y_pred = predicted[idx]
     y_true = clean_labels_tensor[idx]
-
-    # Accuracy
     acc = (y_pred == y_true).sum().item() / len(idx)
 
-    # Precision and recall (macro-averaged across classes)
-    precision = precision_score(y_true.numpy(), y_pred.numpy(), average='macro', zero_division=0)
-    recall = recall_score(y_true.numpy(), y_pred.numpy(), average='macro', zero_division=0)
+    # Precision and Recall
+    idx_set = set(idx.tolist())
+    clean_set = set(clean_indices.tolist())
+
+    true_positives = len(idx_set & clean_set)
+    false_positives = len(idx_set - clean_set)
+    false_negatives = len(clean_set - idx_set)
+
+    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) else 0.0
+    recall = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) else 0.0
 
     return 100 * acc, 100 * precision, 100 * recall
+
 
 
 
@@ -837,8 +875,248 @@ dataset_name = 'cifar10'
 dataset_path = './cifar-10-batches-py'
 number_epochs = 30
 
+"""argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    gce_loss = False,
+    use_pretrained = False,
+
+    uncertainty = True,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.01, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
+    use_loss = True,
+    name_exp = "0.2_edl_0.01_bptplr",
+
+    lambda_plr = 0.5,
+    plr_loss = True,
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = False,
+    mix_clr = False,
+
+    bpt=True,
+    ),
+    
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    gce_loss = False,
+    use_pretrained = False,
+
+    uncertainty = True,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.01, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
+    use_loss = True,
+    name_exp = "0.2_edl_0.01",
+
+    lambda_plr = 0.5,
+    plr_loss = False,
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = False,
+    mix_clr = False,
+
+    bpt=False,
+    ),
+
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    gce_loss = False,
+    use_pretrained = False,
+
+    uncertainty = True,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.1, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
+    use_loss = True,
+    name_exp = "0.2_edl_0.1",
+
+    lambda_plr = 0.5,
+    plr_loss = False,
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = False,
+    mix_clr = False,
+
+    bpt=False,
+    ),
+
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    gce_loss = False,
+    use_pretrained = False,
+
+    uncertainty = True,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.5, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
+    use_loss = True,
+    name_exp = "0.2_edl_0.5",
+
+    lambda_plr = 0.5,
+    plr_loss = False,
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = False,
+    mix_clr = False,
+
+    bpt=False,
+    ),
 
 
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    r=0.8,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    gce_loss = False,
+    use_pretrained = False,
+
+    uncertainty = False,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.01, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
+    use_loss = True,
+    name_exp = "0.8_baseline_2",
+
+    lambda_plr = 0.5,
+    plr_loss = False,
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = False,
+    mix_clr = False,
+
+    bpt=False,
+    )
+
+        argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    gce_loss = False,
+    use_pretrained = False,
+
+    uncertainty = True,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.001, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
+    use_loss = True,
+    name_exp = "0.2_edl_0.001",
+
+    lambda_plr = 0,
+    plr_loss = False,
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = False,
+    mix_clr = False,
+
+    bpt=False,
+    ),    
+    
+    """
 a = [
     argparse.Namespace(
     batch_size=64,
@@ -849,7 +1127,6 @@ a = [
     p_threshold=0.5,
     T=0.5,
     num_epochs=number_epochs,
-    num_clean=5,
     r=0.2,
     id='',
     seed=123,
@@ -858,7 +1135,6 @@ a = [
     num_class=class_number,
     data_path= dataset_path,
     dataset='cifar100',
-    gce_loss = False,
     use_pretrained = False,
 
     uncertainty = True,
@@ -870,14 +1146,20 @@ a = [
 
     epoch_relabel = 300,
     use_loss = True,
-    name_exp = "0.2_simclr",
+    name_exp = "0.2_edl_0.01_consistency",
 
-    lambda_plr = 0.5,
-    plr_loss = False,
+    lambda_plr = 1,
     lambda_c = 0.025, #unicon #psscl,
-    sim_clr = True,
+    sim_clr = False,
     mix_clr = False,
+    consistency_loss = True,
+
+    plr_loss = False,
+    bpt=False,
+    loss_proto = "",
+    two_edl = False,
     ),
+
 
     argparse.Namespace(
     batch_size=64,
@@ -888,7 +1170,6 @@ a = [
     p_threshold=0.5,
     T=0.5,
     num_epochs=number_epochs,
-    num_clean=5,
     r=0.2,
     id='',
     seed=123,
@@ -897,7 +1178,51 @@ a = [
     num_class=class_number,
     data_path= dataset_path,
     dataset='cifar100',
-    gce_loss = False,
+    use_pretrained = False,
+
+    uncertainty = True,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.1, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
+    use_loss = True,
+    name_exp = "0.8_edl_0.1_consistency",
+
+    lambda_plr = 1,
+    plr_loss = False,
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = False,
+    mix_clr = False,
+    consistency_loss = True,
+
+    bpt=False,
+    loss_proto = "",
+
+    two_edl = False,
+    ),
+
+
+
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
     use_pretrained = False,
 
     uncertainty = True,
@@ -909,19 +1234,71 @@ a = [
 
     epoch_relabel = 300,
     use_loss = True,
-    name_exp = "0.2_mixclr",
+    name_exp = "0.2_edl_0.01_bptplr_ce",
 
-    lambda_plr = 0.5,
-    plr_loss = False,
     lambda_c = 0.025, #unicon #psscl,
-    sim_clr = True,
-    mix_clr = True,
+    sim_clr = False,
+    mix_clr = False,
+    consistency_loss = False,
+
+    lambda_plr = 1,
+    plr_loss = True,
+    bpt=True,
+    loss_proto = "ce",
+
+    two_edl = False,
     ),
+
+
+    argparse.Namespace(
+    batch_size=64,
+    lr=0.02,
+    noise_mode='sym',
+    alpha=4,
+    lambda_u=0,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=number_epochs,
+    r=0.2,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    num_class=class_number,
+    data_path= dataset_path,
+    dataset='cifar100',
+    use_pretrained = False,
+
+    uncertainty = True,
+    edl_loss = edl_log_loss,
+    edl_activation = softplus_evidence,
+    uncertainty_class = False,
+    ann_step = 0.1, 
+    evidence_factor = 1/10,
+
+    epoch_relabel = 300,
+    use_loss = True,
+    name_exp = "0.8_edl_0.1_bptplr_ce",
+
+    lambda_c = 0.025, #unicon #psscl,
+    sim_clr = False,
+    mix_clr = False,
+    consistency_loss = False,
+
+    lambda_plr = 1,
+    plr_loss = True,
+    bpt=True,
+    loss_proto = "ce",
+
+    two_edl = False,
+    ),
+
 ]
 
 
 
 for args in a:
+    print(args.name_exp)
     if args.dataset == 'cifar100':
         args.num_class=100
         args.data_path= './cifar-100'
@@ -930,9 +1307,12 @@ for args in a:
     elif args.dataset == 'cifar10':
         args.num_class=10
         args.data_path= './cifar-10-batches-py'
-        args.num_epochs = 10
-    
+        args.num_epochs = 200
 
+
+    
+    if args.bpt == False:
+        args.loss_proto = "ce"
 
     torch.cuda.set_device(args.gpuid)
     random.seed(args.seed)
@@ -971,7 +1351,7 @@ for args in a:
     gce_loss = robust_loss.GCELoss(args.num_class, gpu='0') #only used in warmup
     contrastive_criterion = Contrastive_loss.SupConLoss()
     
-    exp_str = f"test_{args.name_exp}"
+    exp_str = f"{args.name_exp}"
 
     if args.run >0:
         exp_str = exp_str + '_run%d'%args.run
@@ -983,8 +1363,14 @@ for args in a:
     Path(os.path.join(path_exp, 'savedDicts')).mkdir(parents=True, exist_ok=True)
     Path(path_plot).mkdir(parents=True, exist_ok=True)
 
+    
     model_path = "./checkpoint/%s/model_ckpt.pth.tar"%(exp_str)
     incomplete = os.path.exists(model_path)
+    
+    if incomplete == False:
+        model_path = f"./checkpoint/model_ckpt_epoch29_edl{args.r}_{args.ann_step}.pth.tar"
+        incomplete = os.path.exists(model_path)
+
     print('Incomplete...', incomplete)
 
     if incomplete == False:
@@ -995,9 +1381,6 @@ for args in a:
     test_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str,args.dataset,args.r,args.noise_mode)+'_acc.txt',log_mode) 
     time_log=open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_time.txt',log_mode) 
     superclean_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_superclean.txt',log_mode)
-    filtered_superclean_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_filtered_superclean.txt',log_mode)
-    relabeled_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_relabeled.txt',log_mode)
-    remove_log= open('./checkpoint/%s/%s_%.2f_%s'%(exp_str, args.dataset,args.r,args.noise_mode)+'_remove.txt',log_mode)
 
     if args.dataset=='cifar10':
         warm_up = 10
@@ -1064,6 +1447,9 @@ for args in a:
         all_evidence = ckpt['all_evidence']
         all_margin_true_label = ckpt['all_margin_true_label']
         all_uncertainty_class = ckpt.get("all_uncertainty_class", [[],[]])
+        all_mutual_info = ckpt.get("all_mutual_info", [[],[]])
+
+        all_proto_loss = ckpt.get("all_proto_loss", [[],[]])
 
         clean_metrics= ckpt['clean_metrics']
         correct_metrics = ckpt['correct_metrics']
@@ -1080,6 +1466,7 @@ for args in a:
         hist_preds = [[],[]]
         acc_hist = []
         all_loss = [[],[]] # save the history of losses from two networks
+        all_proto_loss = [[],[]]
         all_margins_labels = [[],[]]
 
         eval_loss_hist = [[], []]
@@ -1102,6 +1489,7 @@ for args in a:
         all_evidence = [[],[]]
         all_margin_true_label = [[],[]]
         all_uncertainty_class = [[],[]]
+        all_mutual_info = [[],[]]
 
         clean_metrics= []
         correct_metrics = []
@@ -1140,6 +1528,7 @@ for args in a:
             warmup_time+= end_time
 
             if args.plr_loss:
+                print("INITIALIZE PROTOTYPES...")
                 Contrastive_loss.init_prototypes(net1, eval_loader, device)
                 Contrastive_loss.init_prototypes(net2, eval_loader, device)
 
@@ -1149,17 +1538,13 @@ for args in a:
             pred_loss2, threshold_loss_2, thr2_labeled, thr2_unlabeled = get_clean(prob_loss2, net_idx = 1)
             predicted_labels1 = torch.argmax(hist_preds[0][-1], dim=1)
             predicted_labels2 = torch.argmax(hist_preds[1][-1], dim=1)
-
-            #predicted_labels, predicted_labels1, predicted_labels2 = test_superclean(net1, net2)
-            inds_equal = np.asarray([ind for ind in range(len(noisy_labels)) if noisy_labels[ind] == predicted_labels1[ind]])
-            inds_diff = np.delete(np.arange(len(noisy_labels)), inds_equal)
             
             if epoch==(warm_up-1):
                 time_log.write('Warmup: %f \n'%(warmup_time))
                 time_log.flush()
 
-            write_log(all_idx_view_labeled[0][-1], predicted_labels1, log_file=superclean_log)
-            write_log2(all_idx_view_labeled[0][-1], predicted_labels1, log_file=superclean_log)
+            write_log((pred_loss1).nonzero()[0], predicted_labels1, log_file=superclean_log)
+            write_log2((pred_loss1).nonzero()[0], predicted_labels1, log_file=superclean_log)
             
         else:       
             print("training epoch ", epoch)       
@@ -1174,26 +1559,46 @@ for args in a:
                 eval_loader = loader.run('eval_train', relabel_inds = relabel_idx_2, new_labels= new_labels_2)
                 prob_loss2, all_loss[1], all_preds[1], hist_preds[1], all_margins_labels[1], eval_loss_hist[1], eval_acc_hist[1], correct_indices2, noisy_correct_indices2, op2 = eval_train(net2, all_loss[1], all_preds[1], hist_preds[1], all_margins_labels[1], eval_loss_hist[1], eval_acc_hist[1], clean_labels, net_idx = 1) 
 
-
             pred_loss1, threshold_loss_1, thr1_labeled, thr1_unlabeled = get_clean(prob_loss1, net_idx = 0)
             pred_loss2, threshold_loss_2, thr2_labeled, thr2_unlabeled = get_clean(prob_loss2, net_idx = 1)
 
-            #predicted_labels, predicted_labels1, predicted_labels2 = test_superclean(net1, net2)
             predicted_labels1 = torch.argmax(hist_preds[0][-1], dim=1)
             predicted_labels2 = torch.argmax(hist_preds[1][-1], dim=1)
-
-            inds_equal = np.asarray([ind for ind in range(len(noisy_labels)) if noisy_labels[ind] == predicted_labels1[ind]])
-            inds_diff = np.delete(np.arange(len(noisy_labels)), inds_equal)
             
             if epoch >= args.epoch_relabel-1:
+                print("relabeling...")
                 relabel_idx_1 = list(set(relabel_idx_1) | (set(all_idx_view_relabel_unlabeled[0][-1]) - set(all_idx_superclean[0][-1])))
                 new_labels_1 = predicted_labels1[relabel_idx_1].to(torch.int64)
                 relabel_idx_2 = list(set(relabel_idx_2) | set(all_idx_view_relabel_unlabeled[1][-1]) - set(all_idx_superclean[1][-1]))
                 new_labels_2 = predicted_labels2[relabel_idx_2].to(torch.int64)
 
+            if args.bpt:
+                print("BPT...")
+                sample_rate1 = len((pred_loss1).nonzero()[0]) / len(eval_loader.dataset)
+                sample_rate2 = len((pred_loss2).nonzero()[0]) / len(eval_loader.dataset)
+                pred1_new = np.zeros(len(eval_loader.dataset)).astype(np.bool_)
+                pred2_new = np.zeros(len(eval_loader.dataset)).astype(np.bool_)
+                class_len1 = int(sample_rate1 * len(eval_loader.dataset) / args.num_class)
+                class_len2 = int(sample_rate2 * len(eval_loader.dataset) / args.num_class)
+                for i in range(args.num_class):
+                    class_indices = np.where(np.array(eval_loader.dataset.noise_label) == i)[0]
+                    size1 = len(class_indices)
+                    class_len_temp1 = min(size1, class_len1)
+                    class_len_temp2 = min(size1, class_len2)
+
+                    prob = np.argsort(-prob_loss1[class_indices])
+                    select_idx = class_indices[prob[:class_len_temp1]]
+                    pred1_new[select_idx] = True
+
+                    prob = np.argsort(-prob_loss2[class_indices])
+                    select_idx = class_indices[prob[:class_len_temp2]]
+                    pred2_new[select_idx] = True
+                pred_loss1 = pred1_new
+                pred_loss2 = pred2_new
+
             #write log superclean
-            write_log(all_idx_view_labeled[0][-1], predicted_labels1, log_file=superclean_log)
-            write_log2(all_idx_view_labeled[0][-1], predicted_labels1, log_file=superclean_log)
+            write_log((pred_loss1).nonzero()[0], predicted_labels1, log_file=superclean_log)
+            write_log2((pred_loss1).nonzero()[0], predicted_labels1, log_file=superclean_log)
 
             end_time = round(time.time() - start_time)
             total_time+= end_time
@@ -1218,6 +1623,7 @@ for args in a:
 
 
             if args.plr_loss:
+                print("PLR CORRECTION AND PROTOTYPES...")
                 all_indices_x = torch.tensor(pred_loss2.nonzero()[0])
                 clean_labels_x = Contrastive_loss.noise_correction(op2['pt'][all_indices_x, :],
                                                                 op2['op'][all_indices_x, :],
@@ -1250,7 +1656,7 @@ for args in a:
                 labels = op1['pl'].to(device)
                 labels[all_indices_x] = clean_labels_x
                 labels[all_indices_u] = clean_labels_u
-                net1.update_prototypes(features, labels)
+                net2.update_prototypes(features, labels)
 
 
             end_time = round(time.time() - start_time)
@@ -1265,16 +1671,23 @@ for args in a:
             print("Plots...")
             plot_curve_loss(data_hist= eval_loss_hist[0], inds_clean=inds_clean, inds_noisy=inds_noisy, path=path_plot, epoch=epoch )
             plot_curve_accuracy(data_hist= eval_acc_hist[0], inds_clean=inds_clean, inds_noisy=inds_noisy, path=path_plot, epoch=epoch )
-            plot_histogram_metric(data_hist=all_loss[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_relabeled = relabel_idx_1, thresholds = threshold_loss_1, path=path_plot, epoch=epoch, metric = "Loss"  )
+            if args.use_loss:
+                plot_histogram_metric(data_hist=all_loss[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_relabeled = relabel_idx_1, thresholds = threshold_loss_1, path=path_plot, epoch=epoch, metric = "Loss"  )
+            else:
+                plot_histogram_metric(data_hist=all_margin_true_label[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_relabeled = relabel_idx_1, thresholds = threshold_loss_1, path=path_plot, epoch=epoch, metric = "Margins"  )
+
+            if args.plr_loss:
+                plot_histogram_metric(data_hist=all_proto_loss[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_relabeled = relabel_idx_1, thresholds = threshold_loss_1, path=path_plot, epoch=epoch, metric = "Contrastive_loss"  )
             if args.uncertainty:
                     mean_uncertainty = ( (1 - np.array(all_margins_labels[0][-1])) + np.array(all_vacuity[0][-1]) 
                         + np.array(all_entropy[0][-1]) + np.array(all_dissonance[0][-1]) ) / 4
-                    plot_histogram_metric2(data_hist=mean_uncertainty, inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Mean_uncertainty"  )
-                    plot_histogram_metric2(data_hist=all_margins_labels[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Margins"  )
-                    plot_histogram_metric2(data_hist=all_vacuity[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Vacuity"  )
-                    plot_histogram_metric2(data_hist=all_entropy[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Entropy"  )
-                    plot_histogram_metric2(data_hist=all_dissonance[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Dissonance"  )
-                    plot_histogram_metric2(data_hist=all_uncertainty_class[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], inds_equal = inds_equal, thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "uncert_class"  )
+                    plot_histogram_metric2(data_hist=mean_uncertainty, inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Mean_uncertainty"  )
+                    plot_histogram_metric2(data_hist=all_margins_labels[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Margins"  )
+                    plot_histogram_metric2(data_hist=all_vacuity[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Vacuity"  )
+                    plot_histogram_metric2(data_hist=all_entropy[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Entropy"  )
+                    plot_histogram_metric2(data_hist=all_dissonance[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1],thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "Dissonance"  )
+                    plot_histogram_metric2(data_hist=all_uncertainty_class[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "uncert_class"  )
+                    plot_histogram_metric2(data_hist=all_mutual_info[0], inds_clean=inds_clean, inds_correct=correct_indices1, inds_labeled= all_idx_view_labeled[0][-1], thresholds = [], path=path_plot, epoch=epoch, data_hist_2= all_loss[0], data_hist_3 = all_margins_labels[0], data_hist_4 = all_margin_true_label[0], metric = "mutual_information"  )
             print("Plots finished")
 
         save_models(path_exp)
@@ -1289,8 +1702,7 @@ for args in a:
     time_log.close()
 
     superclean_log.close()
-    filtered_superclean_log.close()
-    relabeled_log.close()
+
 
 
 

@@ -5,7 +5,7 @@ import torch
 import os
 
 
-def compute_histogram_bins(data, desired_bin_size):
+def compute_histogram_bins2(data, desired_bin_size):
     min_val = np.min(data)
     max_val = np.max(data)
     min_boundary = -1.0 * (min_val % desired_bin_size - min_val)
@@ -14,11 +14,17 @@ def compute_histogram_bins(data, desired_bin_size):
     bins = np.linspace(min_boundary, max_boundary, n_bins)
     return bins
 
+def compute_histogram_bins(data, num_bins=100):
+    min_val = np.min(data)
+    max_val = np.max(data)
+    bins = np.linspace(min_val, max_val, num_bins + 1)  # 101 edges → 100 bins
+    return bins
+
 
 def plot_histogram_pred(data, entropy, inds_clean, inds_noisy, path, epoch):
     data = data[-1].numpy()
     entropy = entropy[-1].numpy()
-    bins = compute_histogram_bins(data, 0.01)
+    bins = compute_histogram_bins(data)
     inds_clean = np.array(inds_clean, dtype=int)
     inds_noisy = np.array(inds_noisy, dtype=int)
 
@@ -154,7 +160,7 @@ def plot_hist_curve_loss_test(data_hist, path, epoch):
 
     #histogram
     data = data_hist[-1].numpy()
-    bins = compute_histogram_bins(data, 0.01)
+    bins = compute_histogram_bins(data)
 
     plt.hist(data,bins=bins, range=(0., 1.), edgecolor='black', alpha=0.5, label='all')
     plt.xlabel('Loss')
@@ -179,7 +185,18 @@ def plot_hist_curve_loss_test(data_hist, path, epoch):
 
 
 def plot_histogram_metric(data_hist, inds_clean, inds_correct, inds_labeled, inds_relabeled, thresholds, path, epoch, metric="Uncertainty"):
-    data = data_hist[-1].numpy()
+    item = data_hist[-1]
+    if isinstance(item, torch.Tensor):
+        data = item.detach().cpu().numpy()
+    elif isinstance(item, (list, tuple)):
+        try:
+            data = torch.tensor(item).numpy()
+        except Exception as e:
+            print(f"Failed to convert list to tensor: {e}")
+            print(f"Item: {item}")
+            raise
+    else:
+        raise TypeError(f"Unsupported data type in data_hist[-1]: {type(item)}")
     total_samples = len(data)
     # Create metric-specific folder
     metric_path = os.path.join(path, metric)
@@ -188,7 +205,7 @@ def plot_histogram_metric(data_hist, inds_clean, inds_correct, inds_labeled, ind
     inds_noisy = list(set(range(total_samples)) - (set(inds_clean) | set (inds_relabeled)))
     inds_error = list(set(range(total_samples)) - set(inds_correct))
 
-    bins = compute_histogram_bins(data, 0.01)
+    bins = compute_histogram_bins(data)
 
     # 3. Plot histogram labeled vs unlabeled
     num_inds_labeled = len(inds_labeled)
@@ -256,7 +273,7 @@ def plot_histogram_metric(data_hist, inds_clean, inds_correct, inds_labeled, ind
 
 
 
-def plot_histogram_metric2(data_hist, inds_clean, inds_correct, inds_labeled, inds_equal, thresholds, path, epoch, data_hist_2, data_hist_3, data_hist_4, metric="True_margin"):
+def plot_histogram_metric2(data_hist, inds_clean, inds_correct, inds_labeled, thresholds, path, epoch, data_hist_2, data_hist_3, data_hist_4, metric="True_margin"):
     if metric != "Mean_uncertainty":
         data = data_hist[-1].numpy()
     else:
@@ -277,7 +294,7 @@ def plot_histogram_metric2(data_hist, inds_clean, inds_correct, inds_labeled, in
     inds_noisy = list(set(range(total_samples)) - set(inds_clean))
     inds_unlabeled = list(set(range(total_samples)) - set(inds_labeled))
 
-    bins = compute_histogram_bins(data, 0.01)
+    bins = compute_histogram_bins(data)
 
 
     # Plot histogram for labeled clean vs. noisy

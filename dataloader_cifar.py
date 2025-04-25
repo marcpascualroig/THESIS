@@ -60,35 +60,48 @@ class cifar_dataset(Dataset):
             train_data = train_data.transpose((0, 2, 3, 1))
 
             if os.path.exists(noise_file):
-                noise_label = json.load(open(noise_file, "r"))
-                print('noisy file found.\n')
+                if noise_mode == 'idn':
+                    noise_label = json.load(open(noise_file, "r"))['noise_labels']
+                    noise_num = len(np.where(np.array(noise_label) == np.array(train_label))[0])
+                    print('pdl idn noisy file found, %d.\n'%noise_num)
+                else:
+                    noise_label = json.load(open(noise_file, "r"))
+                    print('noisy file found.\n')
+
             else:  # inject noise
                 print('noisy file not found!!\n')
-                noise_label = []
-                idx = list(range(50000))
-                random.shuffle(idx)
-                num_noise = int(self.r*50000)            
-                noise_idx = idx[:num_noise]
-                for i in range(50000):
-                    if i in noise_idx:
-                        if noise_mode=='sym':
-                            if dataset=='cifar10': 
-                                noiselabel = random.randint(0,9)
-                            elif dataset=='cifar100':    
-                                noiselabel = random.randint(0,99)
-                            noise_label.append(noiselabel)
-                        elif noise_mode=='asym':   
-                            noiselabel = self.transition[train_label[i]]
-                            noise_label.append(noiselabel)                    
-                    else:    
-                        noise_label.append(train_label[i])   
-                print("save noisy labels to %s ..."%noise_file)        
-                json.dump(noise_label,open(noise_file,"w"))
+                if noise_mode =='idn':
+                    noise_label = self.instance_noise(tau=r)
+                    noise_label = np.array(noise_label).astype(np.int64)
+                    print("Save pdl idn noisy labels to %s ..." % noise_file)
+                    np.savez(noise_file, noise_labels=noise_label)
+
+                else:  
+                    noise_label = []
+                    idx = list(range(50000))
+                    random.shuffle(idx)
+                    num_noise = int(self.r*50000)            
+                    noise_idx = idx[:num_noise]
+                    for i in range(50000):
+                        if i in noise_idx:
+                            if noise_mode=='sym':
+                                if dataset=='cifar10': 
+                                    noiselabel = random.randint(0,9)
+                                elif dataset=='cifar100':    
+                                    noiselabel = random.randint(0,99)
+                                noise_label.append(noiselabel)
+                            elif noise_mode=='asym':   
+                                noiselabel = self.transition[train_label[i]]
+                                noise_label.append(noiselabel) 
+                        else:    
+                            noise_label.append(train_label[i])   
+                    print("save noisy labels to %s ..."%noise_file)        
+                    json.dump(noise_label,open(noise_file,"w"))
 
             noise_label = np.array(noise_label).astype(np.int64)
             train_label = np.array(train_label).astype(np.int64)
 
-            #update labels
+            #update labels:marc
             if new_labels is not None:
                 noise_label_tensor = torch.tensor(noise_label) if not isinstance(noise_label, torch.Tensor) else noise_label
                 new_labels_tensor = torch.tensor(new_labels) if not isinstance(new_labels, torch.Tensor) else new_labels
@@ -96,6 +109,7 @@ class cifar_dataset(Dataset):
                 diff_count = (noise_label_tensor[relabel_inds] != new_labels_tensor).sum().item()
                 print("Number of different elements:", diff_count)
                 noise_label[relabel_inds]=new_labels
+            #end update
                 
             if self.mode == 'all':
                 self.train_data = train_data
@@ -348,3 +362,72 @@ class cifar_dataloader():
                 shuffle=False,
                 num_workers=self.num_workers)
             return eval_loader
+
+
+    def instance_noise(
+        self,
+        tau: float = 0.2,
+        std: float = 0.1,
+        feature_size: int = 3 * 32 * 32,
+        # seed: int = 1
+    ):
+        '''
+        Thanks the code from https://github.com/SML-Group/Label-Noise-Learning wrote by SML-Group.
+        LabNoise referred much about the generation of instance-dependent label noise from this repo.
+        '''
+        from scipy import stats
+        from math import inf
+        import torch.nn.functional as F
+
+        # np.random.seed(int(seed))
+        # torch.manual_seed(int(seed))
+        # torch.cuda.manual_seed(int(seed))
+
+        # common-used parameters
+        num_samples = self.num_samples
+        num_classes = self.num_classes
+
+        P = []
+        # sample instance flip rates q from the truncated normal distribution N(\tau, {0.1}^2, [0, 1])
+        flip_distribution = stats.truncnorm((0 - tau) / std, (1 - tau) / std,
+                                            loc=tau,
+                                            scale=std)
+        '''
+        The standard form of this distribution is a standard normal truncated to the range [a, b]
+        notice that a and b are defined over the domain of the standard normal. 
+        To convert clip values for a specific mean and standard deviation, use:
+
+        a, b = (myclip_a - my_mean) / my_std, (myclip_b - my_mean) / my_std
+        truncnorm takes  and  as shape parameters.
+
+        so the above `flip_distribution' give a truncated standard normal distribution with mean = `tau`,
+        range = [0, 1], std = `std`
+        '''
+        # import ipdb; ipdb.set_trace()
+        # how many random variates you need to get
+        q = flip_distribution.rvs(num_samples)
+        # sample W \in \mathcal{R}^{S \times K} from the standard normal distribution N(0, 1^2)
+        W = torch.tensor(
+            np.random.randn(num_classes, feature_size,
+                            num_classes)).float().cuda()  #K*dim*K, dim=3072
+        for i in range(num_samples):
+            x, y = self.transform(Image.fromarray(self.temp_data[i])), torch.tensor(self.temp_targets[i])
+            x = x.cuda()
+            # step (4). generate instance-dependent flip rates
+            # 1 x feature_size  *  feature_size x 10 = 1 x 10, p is a 1 x 10 vector
+            p = x.reshape(1, -1).mm(W[y]).squeeze(0)  #classes
+            # step (5). control the diagonal entry of the instance-dependent transition matrix
+            # As exp^{-inf} = 0, p_{y} will be 0 after softmax function.
+            p[y] = -inf
+            # step (6). make the sum of the off-diagonal entries of the y_i-th row to be q_i
+            p = q[i] * F.softmax(p, dim=0)
+            p[y] += 1 - q[i]
+            P.append(p)
+        P = torch.stack(P, 0).cpu().numpy()
+        l = [i for i in range(self.min_target, self.max_target + 1)]
+        new_label = [np.random.choice(l, p=P[i]) for i in range(num_samples)]
+
+        print('noise rate = ', (new_label != np.array(self.temp_targets)).mean())
+        new_targets = new_label
+        new_targets = np.array(new_targets).astype(np.int64)
+        return new_targets
