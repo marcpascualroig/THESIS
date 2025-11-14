@@ -26,17 +26,26 @@ def init_prototypes(net, eval_loader, device):
     net.init_prototypes(all_features, all_labels)
 
 @torch.no_grad()
-def noise_correction(pt_outputs, dm_outputs, labels, indices, device):
+def noise_correction(pt_outputs, dm_outputs, labels, indices, device, edl_activation, evidence_factor):
     pt_outputs, dm_outputs, labels, indices = (pt_outputs.to(device), dm_outputs.to(device),
                                                labels.to(device), indices.to(device))
     # noise cleaning for clustering
-    alpha = 0.5
-    soft_labels = alpha * F.softmax(pt_outputs, dim=1) + (1 - alpha) * F.softmax(dm_outputs, dim=1)
+    #alpha = 0.5
+    #soft_labels = alpha * F.softmax(pt_outputs, dim=1) + (1 - alpha) * F.softmax(dm_outputs, dim=1)
+
+    evidence_x = edl_activation(pt_outputs)
+    evidence_x2 = edl_activation(dm_outputs)
+    alpha_x = evidence_x/2 + evidence_x2/2 + evidence_factor
+    S_x = torch.sum(alpha_x, dim=1, keepdim=True)
+    soft_labels = alpha_x / S_x
 
     # assign a new pseudo label
     max_score, hard_label = soft_labels.max(1)
     correct_idx = max_score > 0.8
     labels[correct_idx] = hard_label[correct_idx]
+
+    num_changed = (labels[correct_idx] != hard_label[correct_idx]).sum().item()
+    print(f"Labels corrected: {num_changed} / {correct_idx.sum().item()} (confident samples)")
 
     return labels
 
@@ -169,7 +178,7 @@ class PLRLoss(nn.Module):
         self.base_temperature = base_temperature
         self.flat = flat
 
-    def forward(self, features, labels=None, mask=None):
+    def forward(self, features, labels=None, mask=None, sample_weights=None):
         """Compute loss for model. If both `labels` and `mask` are None,
         it degenerates to SimCLR unsupervised loss:
         Args:
@@ -228,7 +237,11 @@ class PLRLoss(nn.Module):
 
                 # loss
                 _loss = - (self.temperature / self.base_temperature) * mean_log_prob_pos
+                if sample_weights is not None:
+                    weights = sample_weights.to(_loss.device).squeeze()
+                    _loss = (_loss * weights)
                 _loss = _loss.mean()
+
             return _loss
 
         device = features.device

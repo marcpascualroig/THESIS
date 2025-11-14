@@ -1,7 +1,0 @@
-Warmup: 1382.000000 
-SSL Time: 40474.000000 
-Total Time: 41856.000000 
-SSL Time: 0.000000 
-Total Time: 0.000000 
-SSL Time: 0.000000 
-Total Time: 0.000000 

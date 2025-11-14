@@ -118,7 +118,7 @@ class PreActBottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10):
+    def __init__(self, block, num_blocks, match_checkpoint, num_classes=10):
         super(ResNet, self).__init__()
         self.in_planes = 64
 
@@ -184,6 +184,7 @@ class ResNet(nn.Module):
             out = F.avg_pool2d(out, 4)
             features = out.view(out.size(0), -1)
             out = self.linear(features)
+
             if forward_pass == 'default':
                 return out
 
@@ -216,8 +217,9 @@ class ResNet(nn.Module):
                 raise ValueError('Invalid forward pass {}'.format(forward_pass))
 
 
-def ResNet18(num_classes=10):
-    return ResNet(PreActBlock, [2,2,2,2], num_classes=num_classes)
+def ResNet18(match_checkpoint, num_classes=10):
+    print("building resnet")
+    return ResNet(PreActBlock, [2,2,2,2], match_checkpoint, num_classes=num_classes)
 
 def ResNet34(num_classes=10):
     return ResNet(BasicBlock, [3,4,6,3], num_classes=num_classes)

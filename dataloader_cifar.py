@@ -9,74 +9,89 @@ import torch
 from torchnet.meter import AUCMeter
 from autoaugment import CIFAR10Policy
 
-
+            
 def unpickle(file):
     import _pickle as cPickle
     with open(file, 'rb') as fo:
         dict = cPickle.load(fo, encoding='latin1')
     return dict
 
-
-class cifar_dataset(Dataset):
-    def __init__(self, dataset, r, noise_mode, root_dir, transform, mode, noise_file='', pred=[], probability=[],
-                 log='', relabel_inds = [], new_labels = None, second_ind=False):
-
-        self.r = r  # noise ratio
+class cifar_dataset(Dataset): 
+    def __init__(self, dataset, r, noise_mode, root_dir, transform, mode, noise_file='', pred=[], probability=[], relabel_inds = [], new_labels = None, log='', noise_path=None):
+        
+        self.r = r # noise ratio
         self.transform = transform
-        self.mode = mode
-        self.transition = {0: 0, 2: 0, 4: 7, 7: 7, 1: 1, 9: 1, 3: 5, 5: 3, 6: 6,
-                           8: 8}  # class transition for asymmetric noise
-        self.second_ind = second_ind
-
-        if self.mode == 'test':
-            if dataset == 'cifar10':
-                test_dic = unpickle('%s/test_batch' % root_dir)
+        self.mode = mode  
+        self.transition = {0:0,2:0,4:7,7:7,1:1,9:1,3:5,5:3,6:6,8:8} # class transition for asymmetric noise
+        self.num_samples = 50000
+        self.num_classes = 10 if dataset == 'cifar10' else 100
+        self.noise_path=noise_path
+        self.noise_type='noisy_label'
+     
+        if self.mode=='test':
+            if dataset=='cifar10':                
+                test_dic = unpickle('%s/test_batch'%root_dir)
                 self.test_data = test_dic['data']
                 self.test_data = self.test_data.reshape((10000, 3, 32, 32))
-                self.test_data = self.test_data.transpose((0, 2, 3, 1))
+                self.test_data = self.test_data.transpose((0, 2, 3, 1))  
                 self.test_label = test_dic['labels']
-            elif dataset == 'cifar100':
-                test_dic = unpickle('%s/test' % root_dir)
+            elif dataset=='cifar100':
+                test_dic = unpickle('%s/test'%root_dir)
                 self.test_data = test_dic['data']
                 self.test_data = self.test_data.reshape((10000, 3, 32, 32))
-                self.test_data = self.test_data.transpose((0, 2, 3, 1))
-                self.test_label = test_dic['fine_labels']
-
-        else:
-            train_data = []
-            train_label = []
-            if dataset == 'cifar10':
-                for n in range(1, 6):
-                    dpath = '%s/data_batch_%d' % (root_dir, n)
+                self.test_data = self.test_data.transpose((0, 2, 3, 1))  
+                self.test_label = test_dic['fine_labels']                            
+        else:    
+            train_data=[]
+            train_label=[]
+            if dataset=='cifar10': 
+                for n in range(1,6):
+                    dpath = '%s/data_batch_%d'%(root_dir,n)
                     data_dic = unpickle(dpath)
                     train_data.append(data_dic['data'])
-                    train_label = train_label + data_dic['labels']
+                    train_label = train_label+data_dic['labels']
                 train_data = np.concatenate(train_data)
-            elif dataset == 'cifar100':
-                train_dic = unpickle('%s/train' % root_dir)
+            elif dataset=='cifar100':    
+                train_dic = unpickle('%s/train'%root_dir)
                 train_data = train_dic['data']
                 train_label = train_dic['fine_labels']
             train_data = train_data.reshape((50000, 3, 32, 32))
             train_data = train_data.transpose((0, 2, 3, 1))
 
+            if noise_mode == 'idn':
+                base_name = os.path.splitext(noise_file)[0]  # Removes the .json extension
+                noise_file = base_name + '.npz' 
+
             if os.path.exists(noise_file):
                 if noise_mode == 'idn':
-                    noise_label = json.load(open(noise_file, "r"))['noise_labels']
+                    noise_data = np.load(noise_file)
+                    noise_label = noise_data['noise_labels']
                     noise_num = len(np.where(np.array(noise_label) == np.array(train_label))[0])
                     print('pdl idn noisy file found, %d.\n'%noise_num)
-                else:
-                    noise_label = json.load(open(noise_file, "r"))
+                elif noise_mode == 'sym':
+                    noise_label = json.load(open(noise_file,"r"))
                     print('noisy file found.\n')
 
-            else:  # inject noise
+                elif noise_mode == 'real':
+                    noise_f = torch.load(self.noise_path)
+                    noise_label = noise_f[self.noise_type]  
+                    noise_label = noise_label.tolist()
+                    noise_num = len(np.where(np.array(noise_label) == np.array(train_label))[0])
+                    print('real noisy file found, %d.\n'%noise_num)
+
+            else:    #inject noise   
                 print('noisy file not found!!\n')
                 if noise_mode =='idn':
+                    self.temp_targets = np.array(train_label)
+                    self.temp_data = np.array(train_data)
+                    self.min_target = min(self.temp_targets)
+                    self.max_target = max(self.temp_targets)
                     noise_label = self.instance_noise(tau=r)
                     noise_label = np.array(noise_label).astype(np.int64)
                     print("Save pdl idn noisy labels to %s ..." % noise_file)
                     np.savez(noise_file, noise_labels=noise_label)
-
-                else:  
+            
+                elif noise_mode == 'sym':
                     noise_label = []
                     idx = list(range(50000))
                     random.shuffle(idx)
@@ -92,16 +107,24 @@ class cifar_dataset(Dataset):
                                 noise_label.append(noiselabel)
                             elif noise_mode=='asym':   
                                 noiselabel = self.transition[train_label[i]]
-                                noise_label.append(noiselabel) 
+                                noise_label.append(noiselabel)                    
                         else:    
-                            noise_label.append(train_label[i])   
+                            noise_label.append(train_label[i])  
                     print("save noisy labels to %s ..."%noise_file)        
                     json.dump(noise_label,open(noise_file,"w"))
 
-            noise_label = np.array(noise_label).astype(np.int64)
-            train_label = np.array(train_label).astype(np.int64)
+                elif noise_mode =='real':
+                    noise_f = torch.load(self.noise_path)
+                    noise_label = noise_f[self.noise_type]  
+                    noise_label = noise_label.tolist()
+                    print(len(noise_label))
+                    print("save noisy labels to %s ..."%noise_file)        
+                    json.dump(noise_label,open(noise_file,"w"))
+            
 
-            #update labels:marc
+            
+            noise_label = np.array(noise_label).astype(np.int64)
+            #update labels
             if new_labels is not None:
                 noise_label_tensor = torch.tensor(noise_label) if not isinstance(noise_label, torch.Tensor) else noise_label
                 new_labels_tensor = torch.tensor(new_labels) if not isinstance(new_labels, torch.Tensor) else new_labels
@@ -109,93 +132,141 @@ class cifar_dataset(Dataset):
                 diff_count = (noise_label_tensor[relabel_inds] != new_labels_tensor).sum().item()
                 print("Number of different elements:", diff_count)
                 noise_label[relabel_inds]=new_labels
-            #end update
-                
-            if self.mode == 'all':
+
+            train_label = np.array(train_label).astype(np.int64)
+
+            if self.mode == 'all' or self.mode == 'pretrain':
                 self.train_data = train_data
                 self.noise_label = np.array(noise_label).astype(np.int64)
                 self.train_label = np.array(train_label).astype(np.int64)
-            else:
+            else:            
                 if self.mode == "labeled":
-                    pred_idx = pred.nonzero()[0]
-                    self.probability = [probability[i] for i in pred_idx]
-
-                    clean = (np.array(noise_label) == np.array(train_label))
+                    pred_idx = pred.nonzero()[0] 
+                    self.probability = np.array([probability[i] for i in pred_idx]) 
+                    clean = (np.array(noise_label)==np.array(train_label))                                                       
                     auc_meter = AUCMeter()
                     auc_meter.reset()
-                    auc_meter.add(probability, clean)
-                    auc, _, _ = auc_meter.value()
-                    log.write('Numer of labeled samples:%d   AUC:%.3f\n' % (pred.sum(), auc))
+                    auc_meter.add(probability,clean)        
+                    auc,_,_ = auc_meter.value()               
+                    log.write('Numer of labeled samples:%d   AUC:%.3f\n'%(pred.sum(),auc))
                     log.flush()
-
+                    
                 elif self.mode == "unlabeled":
-                    pred_idx = (1 - pred).nonzero()[0]
+                    pred_idx = (1-pred).nonzero()[0]    
+                    #pred_idx = np.setdiff1d(pred_idx, relabel_inds)
 
-                self.train_data = train_data[pred_idx]
-                # self.noise_label = [noise_label[i] for i in pred_idx]
-                # pred_idx = np.array(pred_idx)
-                self.noise_label = np.array(noise_label)[pred_idx]
-                print("%s data has a size of %d" % (self.mode, len(self.noise_label)))
+                self.train_data = train_data[np.array(pred_idx).astype(int)]
+                self.noise_label = np.array(noise_label)[np.array(pred_idx).astype(int)]
+                print("%s data has a size of %d"%(self.mode,len(self.noise_label)))
 
+
+
+    def instance_noise(
+        self,
+        tau: float = 0.2,
+        std: float = 0.1,
+        feature_size: int = 3 * 32 * 32,
+        # seed: int = 1
+    ):
+        '''
+        Thanks the code from https://github.com/SML-Group/Label-Noise-Learning wrote by SML-Group.
+        LabNoise referred much about the generation of instance-dependent label noise from this repo.
+        '''
+        from scipy import stats
+        from math import inf
+        import torch.nn.functional as F
+
+        # np.random.seed(int(seed))
+        # torch.manual_seed(int(seed))
+        # torch.cuda.manual_seed(int(seed))
+
+        # common-used parameters
+        num_samples = self.num_samples
+        num_classes = self.num_classes
+
+        P = []
+        # sample instance flip rates q from the truncated normal distribution N(\tau, {0.1}^2, [0, 1])
+        flip_distribution = stats.truncnorm((0 - tau) / std, (1 - tau) / std,
+                                            loc=tau,
+                                            scale=std)
+        # import ipdb; ipdb.set_trace()
+        # how many random variates you need to get
+        q = flip_distribution.rvs(num_samples)
+        # sample W \in \mathcal{R}^{S \times K} from the standard normal distribution N(0, 1^2)
+        W = torch.tensor(
+            np.random.randn(num_classes, feature_size,
+                            num_classes)).float().cuda()  #K*dim*K, dim=3072
+        for i in range(num_samples):
+            x, y = self.transform(Image.fromarray(self.temp_data[i])), torch.tensor(self.temp_targets[i])
+            x = x.cuda()
+            # step (4). generate instance-dependent flip rates
+            # 1 x feature_size  *  feature_size x 10 = 1 x 10, p is a 1 x 10 vector
+            p = x.reshape(1, -1).mm(W[y]).squeeze(0)  #classes
+            # step (5). control the diagonal entry of the instance-dependent transition matrix
+            # As exp^{-inf} = 0, p_{y} will be 0 after softmax function.
+            p[y] = -inf
+            # step (6). make the sum of the off-diagonal entries of the y_i-th row to be q_i
+            p = q[i] * F.softmax(p, dim=0)
+            p[y] += 1 - q[i]
+            P.append(p)
+        P = torch.stack(P, 0).cpu().numpy()
+        l = [i for i in range(self.min_target, self.max_target + 1)]
+        new_label = [np.random.choice(l, p=P[i]) for i in range(num_samples)]
+
+        print('noise rate = ', (new_label != np.array(self.temp_targets)).mean())
+        new_targets = new_label
+        new_targets = np.array(new_targets).astype(np.int64)
+        return new_targets
+
+
+                
     def __getitem__(self, index):
-        if self.second_ind:
-            if self.mode == 'labeled':
+        if self.mode=='labeled':
                 img, target, prob = self.train_data[index], self.noise_label[index], self.probability[index]
                 img = Image.fromarray(img)
                 img1 = self.transform[0](img)
                 img2 = self.transform[1](img)
                 img3 = self.transform[2](img)
                 img4 = self.transform[3](img)
-
                 return img1, img2, img3, img4, target, prob, index
-            elif self.mode == 'unlabeled':
+
+        elif self.mode=='unlabeled':
+                img, target = self.train_data[index], self.noise_label[index]
+                img = Image.fromarray(img)
+                img1 = self.transform[0](img)
+                img2 = self.transform[1](img)
+                img3 = self.transform[2](img)
+                img4 = self.transform[3](img)
+                return img1, img2, img3, img4, target, index
+        
+        elif self.mode=='pretrain':
                 img = self.train_data[index]
                 img = Image.fromarray(img)
                 img1 = self.transform[0](img)
                 img2 = self.transform[1](img)
                 img3 = self.transform[2](img)
                 img4 = self.transform[3](img)
-                return img1, img2, img3, img4, self.noise_label[index], index
-        else:
-            if self.mode == 'labeled':
-                img, target, prob = self.train_data[index], self.noise_label[index], self.probability[index]
-                img = Image.fromarray(img)
-                img1 = self.transform(img)
-                img2 = self.transform(img)
-                return img1, img2, target, prob
-            elif self.mode == 'unlabeled':
-                img = self.train_data[index]
-                img = Image.fromarray(img)
-                img1 = self.transform(img)
-                img2 = self.transform(img)
-                return img1, img2
-
-        if self.mode == 'all':
+                return img1, img2, img3, img4, index
+        elif self.mode=='all':
             img, target = self.train_data[index], self.noise_label[index]
             img = Image.fromarray(img)
-            if isinstance(self.transform, list):
-                img1 = self.transform[0](img)
-                img2 = self.transform[1](img)
-                img3 = self.transform[1](img)
-                return img1, img2, img3, target, index
-            else:
-                img = self.transform(img)
-                return img, target, index
-        elif self.mode == 'test':
+            img = self.transform(img)
+            return img, target, index
+        elif self.mode=='test':
             img, target = self.test_data[index], self.test_label[index]
             img = Image.fromarray(img)
             img = self.transform(img)
             return img, target, index
-
+           
     def __len__(self):
-        if self.mode != 'test':
+        if self.mode!='test':
             return len(self.train_data)
         else:
-            return len(self.test_data)
-
-
-class cifar_dataloader():
-    def __init__(self, dataset, r, noise_mode, batch_size, num_workers, root_dir, log, noise_file=''):
+            return len(self.test_data)         
+        
+        
+class cifar_dataloader():  
+    def __init__(self, dataset, r, noise_mode, batch_size, num_workers, root_dir, log, noise_file='', noise_path=None):
         self.dataset = dataset
         self.r = r
         self.noise_mode = noise_mode
@@ -204,6 +275,9 @@ class cifar_dataloader():
         self.root_dir = root_dir
         self.log = log
         self.noise_file = noise_file
+        self.noise_path = noise_path
+
+
         if self.dataset == 'cifar10':
             transform_weak_10 = transforms.Compose(
                 [
@@ -225,10 +299,7 @@ class cifar_dataloader():
             )
 
             self.transforms = {
-                "warmup": [
-                    transform_weak_10,
-                    transform_strong_10
-                ],
+                "warmup": transform_weak_10,
                 "unlabeled": [
                     transform_weak_10,
                     transform_weak_10,
@@ -269,9 +340,7 @@ class cifar_dataloader():
             )
 
             self.transforms = {
-                "warmup": [transform_weak_100,
-                           transform_strong_100
-                           ],
+                "warmup": transform_weak_100,
                 "unlabeled": [
                     transform_weak_100,
                     transform_weak_100,
@@ -291,143 +360,75 @@ class cifar_dataloader():
             ])
         self.transform_train = self.transforms
 
-    def run(self, mode, pred=[], prob=[], second_ind=False, relabel_inds = [], new_labels=None):
-        if mode == 'warmup':
+
+    def run(self,mode,pred=[],prob=[], relabel_inds = [], new_labels=None):
+        if mode=='warmup':
             all_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
                                         root_dir=self.root_dir, transform=self.transform_train["warmup"], mode="all",
-                                        noise_file=self.noise_file, second_ind=second_ind)
+                                        noise_file=self.noise_file, noise_path=self.noise_path)
             trainloader = DataLoader(
                 dataset=all_dataset,
-                batch_size=self.batch_size * 2,
+                batch_size=self.batch_size*2,
                 shuffle=True,
                 num_workers=self.num_workers)
             return trainloader
 
-        elif mode == 'train':
+        elif mode == 'pretrain':
+            pretrain_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
+                                        root_dir=self.root_dir, transform=self.transform_train["unlabeled"], mode="pretrain",
+                                        noise_file=self.noise_file, noise_path=self.noise_path)
+            trainloader = DataLoader(
+                dataset=pretrain_dataset,
+                batch_size=self.batch_size,
+                shuffle=True,
+                num_workers=self.num_workers)
+            return trainloader
+        
+
+        elif mode=='train':
             labeled_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
-                                            root_dir=self.root_dir, transform=self.transform_train["labeled"],
-                                            mode="labeled",
-                                            noise_file=self.noise_file, pred=pred, probability=prob, relabel_inds = relabel_inds, new_labels=new_labels, log=self.log,
-                                            second_ind=second_ind)
-            if len(labeled_dataset) == 0:
-                print('len==0')
-                labeled_trainloader = DataLoader(
-                    dataset=labeled_dataset,
-                    batch_size=self.batch_size,
-                    shuffle=False, drop_last=True,
-                    num_workers=self.num_workers)
-            else:
-                labeled_trainloader = DataLoader(
-                    dataset=labeled_dataset,
-                    batch_size=self.batch_size,
-                    shuffle=True, drop_last=True,
-                    num_workers=self.num_workers)
+                                            root_dir=self.root_dir, transform=self.transform_train["labeled"], mode="labeled",
+                                            noise_file=self.noise_file, pred=pred, probability=prob, relabel_inds = relabel_inds, new_labels=new_labels, noise_path=self.noise_path, log=self.log)
+            labeled_trainloader = DataLoader(
+                dataset=labeled_dataset,
+                batch_size=self.batch_size,
+                shuffle=True,
+                num_workers=self.num_workers)
 
             unlabeled_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
-                                              root_dir=self.root_dir, transform=self.transform_train["unlabeled"],
-                                              mode="unlabeled",
-                                              noise_file=self.noise_file, pred=pred, relabel_inds = relabel_inds, new_labels=new_labels, second_ind=second_ind)
+                                              root_dir=self.root_dir, transform=self.transform_train["unlabeled"], mode="unlabeled",
+                                              noise_file=self.noise_file, pred=pred, relabel_inds = relabel_inds, new_labels=new_labels, noise_path=self.noise_path)
             unlabeled_trainloader = DataLoader(
                 dataset=unlabeled_dataset,
                 batch_size=self.batch_size,
-                shuffle=True, drop_last=True,
+                shuffle=True,
                 num_workers=self.num_workers)
 
             unlabeled_trainloader_map = DataLoader(
                 dataset=unlabeled_dataset,
                 batch_size=self.batch_size,
-                shuffle=False, drop_last=True,
+                shuffle=False,
                 num_workers=self.num_workers)
+            
             return labeled_trainloader, unlabeled_trainloader, unlabeled_trainloader_map
 
-        elif mode == 'test':
+        elif mode=='test':
             test_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
-                                         root_dir=self.root_dir, transform=self.transform_test, mode='test',
-                                         second_ind=second_ind)
+                                         root_dir=self.root_dir, transform=self.transform_test, mode='test', noise_path=self.noise_path)
             test_loader = DataLoader(
                 dataset=test_dataset,
-                batch_size=self.batch_size * 2,
+                batch_size=self.batch_size*2,
                 shuffle=False,
                 num_workers=self.num_workers)
             return test_loader
 
-        elif mode == 'eval_train':
-            eval_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r,
-                                         root_dir=self.root_dir,
-                                         transform=self.transform_test, mode='all', noise_file=self.noise_file,
-                                         relabel_inds = relabel_inds, new_labels=new_labels, second_ind=second_ind)
+        elif mode=='eval_train':
+            eval_dataset = cifar_dataset(dataset=self.dataset, noise_mode=self.noise_mode, r=self.r, root_dir=self.root_dir,
+                                         transform=self.transform_test, mode='all', relabel_inds = relabel_inds, new_labels=new_labels, noise_file=self.noise_file, noise_path=self.noise_path)
             eval_loader = DataLoader(
                 dataset=eval_dataset,
-                batch_size=self.batch_size * 2,
+                batch_size=self.batch_size*2,
                 shuffle=False,
                 num_workers=self.num_workers)
             return eval_loader
-
-
-    def instance_noise(
-        self,
-        tau: float = 0.2,
-        std: float = 0.1,
-        feature_size: int = 3 * 32 * 32,
-        # seed: int = 1
-    ):
-        '''
-        Thanks the code from https://github.com/SML-Group/Label-Noise-Learning wrote by SML-Group.
-        LabNoise referred much about the generation of instance-dependent label noise from this repo.
-        '''
-        from scipy import stats
-        from math import inf
-        import torch.nn.functional as F
-
-        # np.random.seed(int(seed))
-        # torch.manual_seed(int(seed))
-        # torch.cuda.manual_seed(int(seed))
-
-        # common-used parameters
-        num_samples = self.num_samples
-        num_classes = self.num_classes
-
-        P = []
-        # sample instance flip rates q from the truncated normal distribution N(\tau, {0.1}^2, [0, 1])
-        flip_distribution = stats.truncnorm((0 - tau) / std, (1 - tau) / std,
-                                            loc=tau,
-                                            scale=std)
-        '''
-        The standard form of this distribution is a standard normal truncated to the range [a, b]
-        notice that a and b are defined over the domain of the standard normal. 
-        To convert clip values for a specific mean and standard deviation, use:
-
-        a, b = (myclip_a - my_mean) / my_std, (myclip_b - my_mean) / my_std
-        truncnorm takes  and  as shape parameters.
-
-        so the above `flip_distribution' give a truncated standard normal distribution with mean = `tau`,
-        range = [0, 1], std = `std`
-        '''
-        # import ipdb; ipdb.set_trace()
-        # how many random variates you need to get
-        q = flip_distribution.rvs(num_samples)
-        # sample W \in \mathcal{R}^{S \times K} from the standard normal distribution N(0, 1^2)
-        W = torch.tensor(
-            np.random.randn(num_classes, feature_size,
-                            num_classes)).float().cuda()  #K*dim*K, dim=3072
-        for i in range(num_samples):
-            x, y = self.transform(Image.fromarray(self.temp_data[i])), torch.tensor(self.temp_targets[i])
-            x = x.cuda()
-            # step (4). generate instance-dependent flip rates
-            # 1 x feature_size  *  feature_size x 10 = 1 x 10, p is a 1 x 10 vector
-            p = x.reshape(1, -1).mm(W[y]).squeeze(0)  #classes
-            # step (5). control the diagonal entry of the instance-dependent transition matrix
-            # As exp^{-inf} = 0, p_{y} will be 0 after softmax function.
-            p[y] = -inf
-            # step (6). make the sum of the off-diagonal entries of the y_i-th row to be q_i
-            p = q[i] * F.softmax(p, dim=0)
-            p[y] += 1 - q[i]
-            P.append(p)
-        P = torch.stack(P, 0).cpu().numpy()
-        l = [i for i in range(self.min_target, self.max_target + 1)]
-        new_label = [np.random.choice(l, p=P[i]) for i in range(num_samples)]
-
-        print('noise rate = ', (new_label != np.array(self.temp_targets)).mean())
-        new_targets = new_label
-        new_targets = np.array(new_targets).astype(np.int64)
-        return new_targets
+        
