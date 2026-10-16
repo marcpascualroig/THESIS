@@ -9,7 +9,6 @@ import torch
 # from vision import VisionDataset
 
 from PIL import Image
-from torchnet.meter import AUCMeter
 import torch.nn.functional as F 
 import os
 import os.path

@@ -524,9 +524,9 @@ def create_model():
     model = ResNet18(num_classes=args.num_class)
 
     if args.use_pretrained:
-        #checkpoint = torch.load(f'../tiny/pretrained/all4one-tiny-preresnet18.ckpt')
+        print(f"Loading pretrained weights from {args.pretrained_path}")
         checkpoint = torch.load(
-            f'../tiny/pretrained/all4one-tiny-preresnet18.ckpt',
+            args.pretrained_path,
             map_location=lambda storage, loc: storage.cuda(0)
         )
         if "state_dict" in checkpoint:       # Lightning ckpt format
@@ -820,10 +820,63 @@ a = [
     ann_step = 0.005,
     evidence_factor = 10/200,
     use_pretrained = True,
+    pretrained_path = "./tiny_pretrained/all4one-tiny-preresnet18.ckpt",
     edl_loss = edl_log_loss,
     edl_activation = exp_evidence,
-    lambda_u = 25,
-    name_exp = "tiny_0.2_sym_alpha0.5_bs32_0.005",
+    lambda_u = 30,
+    name_exp = "tiny_0.2_sym_alpha0.5_bs32_lr0.005_30",
+    bpt=True,
+    plr_loss = True
+    ),
+
+    argparse.Namespace(
+    batch_size=32,
+    lr=0.005,
+    noise_mode='sym',
+    alpha=0.5,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=200,
+    r=0.4,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    dataset='tiny-imagenet',
+    ann_step = 0.005,
+    evidence_factor = 10/200,
+    use_pretrained = True,
+    pretrained_path = "./tiny_pretrained/all4one-tiny-preresnet18.ckpt",
+    edl_loss = edl_log_loss,
+    edl_activation = exp_evidence,
+    lambda_u = 30,
+    name_exp = "tiny_0.4_sym_alpha0.5_bs32_lr0.005_30",
+    bpt=True,
+    plr_loss = True
+    ),
+
+    argparse.Namespace(
+    batch_size=32,
+    lr=0.005,
+    noise_mode='sym',
+    alpha=0.5,
+    p_threshold=0.5,
+    T=0.5,
+    num_epochs=200,
+    r=0.5,
+    id='',
+    seed=123,
+    gpuid=0,
+    run=0,
+    dataset='tiny-imagenet',
+    ann_step = 0.005,
+    evidence_factor = 10/200,
+    use_pretrained = True,
+    pretrained_path = "./tiny_pretrained/all4one-tiny-preresnet18.ckpt",
+    edl_loss = edl_log_loss,
+    edl_activation = exp_evidence,
+    lambda_u = 30,
+    name_exp = "tiny_0.5_sym_alpha0.5_bs32_lr0.005_30",
     bpt=True,
     plr_loss = True
     ),
@@ -1145,7 +1198,6 @@ for args in a:
     time_log.close()
 
     superclean_log.close()
-
 
 
 
